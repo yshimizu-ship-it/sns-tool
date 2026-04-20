@@ -1,0 +1,2709 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>SNS自動投稿ツール</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d0f14;--sidebar:#12151c;--card:#181c26;--card2:#1e2330;
+  --accent:#4f8ef7;--accent2:#a78bfa;--green:#34d399;--red:#f87171;
+  --yellow:#fbbf24;--text:#e8eaf0;--muted:#8892a4;--border:#252a38;
+  --radius:12px;--radius-sm:8px;
+}
+html{scroll-behavior:smooth}
+body{font-family:'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);display:flex;min-height:100vh}
+
+/* ─── SIDEBAR ─── */
+#sidebar{
+  width:220px;min-width:220px;background:var(--sidebar);
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;
+  z-index:50;overflow-y:auto;
+}
+.sidebar-logo{
+  padding:20px 16px 16px;
+  font-size:.85rem;font-weight:700;color:var(--accent);
+  letter-spacing:.04em;border-bottom:1px solid var(--border);
+  line-height:1.4;
+}
+.sidebar-logo span{color:var(--muted);font-size:.7rem;font-weight:400;display:block;margin-top:2px}
+.nav-item{
+  display:flex;align-items:center;gap:10px;padding:11px 16px;
+  cursor:pointer;font-size:.78rem;color:var(--muted);
+  transition:all .18s;border-left:3px solid transparent;
+  text-decoration:none;user-select:none;
+}
+.nav-item:hover{background:rgba(79,142,247,.07);color:var(--text)}
+.nav-item.active{background:rgba(79,142,247,.12);color:var(--accent);border-left-color:var(--accent)}
+.nav-icon{font-size:1.05rem;min-width:20px;text-align:center}
+.nav-section{padding:14px 16px 4px;font-size:.65rem;font-weight:700;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+
+/* ─── MAIN ─── */
+#main{margin-left:220px;flex:1;padding:28px;min-height:100vh}
+.page{display:none}
+.page.active{display:block}
+.page-header{margin-bottom:24px}
+.page-title{font-size:1.4rem;font-weight:700;margin-bottom:4px}
+.page-sub{font-size:.82rem;color:var(--muted)}
+
+/* ─── CARDS ─── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px}
+.card-sm{padding:14px}
+.grid{display:grid;gap:16px}
+.grid-2{grid-template-columns:1fr 1fr}
+.grid-3{grid-template-columns:1fr 1fr 1fr}
+.grid-4{grid-template-columns:repeat(4,1fr)}
+
+/* ─── FORM ELEMENTS ─── */
+label{font-size:.78rem;color:var(--muted);display:block;margin-bottom:5px}
+input,select,textarea{
+  width:100%;background:var(--card2);border:1px solid var(--border);
+  border-radius:var(--radius-sm);color:var(--text);padding:9px 12px;
+  font-size:.82rem;outline:none;transition:border .18s;
+  font-family:inherit;
+}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+textarea{resize:vertical;min-height:80px}
+.form-group{margin-bottom:14px}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  padding:10px 20px;border-radius:var(--radius-sm);border:none;
+  font-size:.82rem;font-weight:600;cursor:pointer;transition:all .18s;
+  font-family:inherit;
+}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:#3b7de8}
+.btn-success{background:var(--green);color:#0d1117}
+.btn-success:hover{background:#2cc489}
+.btn-danger{background:var(--red);color:#fff;padding:6px 12px;font-size:.75rem}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--muted)}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+.btn-sm{padding:6px 14px;font-size:.75rem}
+
+/* ─── STAT CARDS ─── */
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px}
+.stat-label{font-size:.72rem;color:var(--muted);margin-bottom:4px}
+.stat-value{font-size:1.6rem;font-weight:700}
+.stat-sub{font-size:.72rem;color:var(--muted);margin-top:2px}
+.stat-up{color:var(--green)}
+.stat-down{color:var(--red)}
+
+/* ─── BADGE ─── */
+.badge{display:inline-block;padding:2px 10px;border-radius:99px;font-size:.7rem;font-weight:600}
+.badge-blue{background:rgba(79,142,247,.15);color:var(--accent)}
+.badge-green{background:rgba(52,211,153,.15);color:var(--green)}
+.badge-purple{background:rgba(167,139,250,.15);color:var(--accent2)}
+.badge-yellow{background:rgba(251,191,36,.15);color:var(--yellow)}
+.badge-red{background:rgba(248,113,113,.15);color:var(--red)}
+
+/* ─── TABLE ─── */
+table{width:100%;border-collapse:collapse;font-size:.78rem}
+th{padding:8px 12px;text-align:left;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border)}
+td{padding:9px 12px;border-bottom:1px solid rgba(37,42,56,.5)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(79,142,247,.04)}
+
+/* ─── PROGRESS ─── */
+.progress-wrap{background:var(--card2);border-radius:99px;height:8px;overflow:hidden}
+.progress-fill{height:100%;border-radius:99px;transition:width .4s}
+
+/* ─── CALENDAR ─── */
+.calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal-head{text-align:center;font-size:.7rem;color:var(--muted);padding:4px}
+.cal-day{
+  min-height:60px;background:var(--card2);border:1px solid var(--border);
+  border-radius:6px;padding:4px;cursor:pointer;transition:border .18s;
+}
+.cal-day:hover{border-color:var(--accent)}
+.cal-day.today{border-color:var(--accent);background:rgba(79,142,247,.06)}
+.cal-day.empty{background:transparent;border-color:transparent;cursor:default}
+.cal-num{font-size:.7rem;color:var(--muted);margin-bottom:2px}
+.cal-post{
+  background:var(--accent);color:#fff;font-size:.62rem;padding:1px 4px;
+  border-radius:3px;margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+
+/* ─── CHIPS ─── */
+.chip-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chip{background:var(--card2);border:1px solid var(--border);border-radius:99px;padding:3px 10px;font-size:.72rem;color:var(--muted)}
+
+/* ─── GENERATED OUTPUT ─── */
+.gen-item{
+  background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);
+  padding:14px;margin-bottom:10px;position:relative;
+}
+.gen-item .copy-btn{
+  position:absolute;top:10px;right:10px;
+  background:rgba(79,142,247,.15);border:none;color:var(--accent);
+  padding:3px 10px;border-radius:5px;font-size:.7rem;cursor:pointer;
+  font-family:inherit;
+}
+.gen-item .copy-btn:hover{background:rgba(79,142,247,.3)}
+.gen-text{font-size:.82rem;line-height:1.7;padding-right:60px}
+.gen-num{font-size:.65rem;color:var(--muted);margin-bottom:4px}
+
+/* ─── SCROLLBAR ─── */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:99px}
+
+/* ─── RESPONSIVE ─── */
+@media(max-width:768px){
+  #sidebar{transform:translateX(-100%)}
+  #main{margin-left:0;padding:16px}
+  .grid-2,.grid-3,.grid-4{grid-template-columns:1fr}
+}
+
+/* ─── ROADMAP ─── */
+.roadmap-step{
+  display:flex;gap:14px;margin-bottom:14px;
+}
+.step-line{display:flex;flex-direction:column;align-items:center}
+.step-dot{
+  width:32px;height:32px;border-radius:50%;background:var(--accent);
+  display:flex;align-items:center;justify-content:center;
+  font-size:.75rem;font-weight:700;color:#fff;flex-shrink:0;
+}
+.step-dot.done{background:var(--green)}
+.step-connector{width:2px;flex:1;background:var(--border);margin:4px auto}
+.step-content{flex:1;padding-bottom:10px}
+.step-title{font-size:.85rem;font-weight:600;margin-bottom:4px}
+.step-desc{font-size:.76rem;color:var(--muted);line-height:1.6}
+.step-check{display:flex;align-items:center;gap:8px;font-size:.78rem;margin-top:6px;cursor:pointer}
+.step-check input{width:auto}
+
+/* ─── TABS ─── */
+.tabs{display:flex;gap:4px;margin-bottom:16px;flex-wrap:wrap}
+.tab{
+  padding:7px 16px;border-radius:var(--radius-sm);border:1px solid var(--border);
+  font-size:.78rem;cursor:pointer;color:var(--muted);transition:all .18s;background:transparent;
+  font-family:inherit;
+}
+.tab.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.tab-pane{display:none}
+.tab-pane.active{display:block}
+
+/* ─── VIDEO RANKING ─── */
+.rank-item{
+  display:flex;align-items:center;gap:14px;padding:12px;
+  background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);
+  margin-bottom:8px;
+}
+.rank-num{
+  font-size:1.1rem;font-weight:700;min-width:28px;text-align:center;
+}
+.rank-1{color:#ffd700}.rank-2{color:#c0c0c0}.rank-3{color:#cd7f32}
+.rank-num.other{color:var(--muted);font-size:.85rem}
+.rank-thumb{
+  width:72px;height:42px;border-radius:6px;object-fit:cover;background:var(--border);
+  display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;
+}
+.rank-info{flex:1}
+.rank-title{font-size:.82rem;font-weight:600;margin-bottom:2px}
+.rank-meta{font-size:.72rem;color:var(--muted)}
+.rank-views{font-size:.9rem;font-weight:700;color:var(--accent);min-width:80px;text-align:right}
+
+/* ─── MODAL ─── */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;
+  display:none;align-items:center;justify-content:center;
+}
+.modal-overlay.open{display:flex}
+.modal{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+  padding:24px;max-width:560px;width:90%;max-height:80vh;overflow-y:auto;
+}
+.modal-title{font-size:1rem;font-weight:700;margin-bottom:16px}
+.modal-close{float:right;cursor:pointer;color:var(--muted);font-size:1.2rem;line-height:1}
+
+/* notification */
+.toast{
+  position:fixed;bottom:24px;right:24px;background:var(--green);color:#0d1117;
+  padding:10px 20px;border-radius:var(--radius-sm);font-size:.8rem;font-weight:600;
+  z-index:999;opacity:0;transform:translateY(10px);transition:all .3s;pointer-events:none;
+}
+.toast.show{opacity:1;transform:translateY(0)}
+
+/* LP preview */
+.lp-preview{
+  background:#fff;color:#222;border-radius:var(--radius);padding:20px;
+  font-family:sans-serif;line-height:1.6;max-height:400px;overflow-y:auto;
+}
+
+/* ─── SWIPER ─── */
+.swiper-wrap{position:relative;overflow:hidden;border-radius:var(--radius)}
+.swiper-track{display:flex;transition:transform .3s cubic-bezier(.4,0,.2,1)}
+.swiper-slide{min-width:100%;flex-shrink:0}
+.swiper-nav{display:flex;align-items:center;justify-content:space-between;margin-top:12px}
+.swiper-dots{display:flex;gap:5px;justify-content:center;flex:1}
+.swiper-dot{width:6px;height:6px;border-radius:50%;background:var(--border);cursor:pointer;transition:all .2s}
+.swiper-dot.active{background:var(--accent);width:18px;border-radius:3px}
+.swiper-counter{font-size:.72rem;color:var(--muted);min-width:40px;text-align:center}
+.swipe-card{
+  background:var(--card2);border:1px solid var(--border);border-radius:var(--radius);
+  padding:20px;min-height:180px;position:relative;
+}
+.swipe-card-num{font-size:.68rem;color:var(--accent);font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.swipe-card-text{font-size:.84rem;line-height:1.8;padding-bottom:36px}
+.swipe-card-actions{position:absolute;bottom:12px;right:12px;display:flex;gap:6px}
+
+/* ─── COMMENT TREE ─── */
+.comment-node{margin-bottom:8px}
+.comment-item{
+  display:flex;gap:10px;padding:10px 12px;
+  background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);
+}
+.comment-avatar{
+  width:32px;height:32px;border-radius:50%;background:var(--accent);
+  display:flex;align-items:center;justify-content:center;font-size:.75rem;
+  font-weight:700;color:#fff;flex-shrink:0;
+}
+.comment-body{flex:1}
+.comment-author{font-size:.75rem;font-weight:700;margin-bottom:2px}
+.comment-text{font-size:.8rem;line-height:1.6;color:var(--text)}
+.comment-meta{display:flex;align-items:center;gap:10px;margin-top:5px}
+.comment-time{font-size:.68rem;color:var(--muted)}
+.comment-reply-btn{font-size:.68rem;color:var(--accent);cursor:pointer;background:none;border:none;font-family:inherit;padding:0}
+.comment-like{font-size:.68rem;color:var(--muted);cursor:pointer}
+.comment-replies{margin-left:42px;border-left:2px solid var(--border);padding-left:10px;margin-top:6px}
+.comment-input-wrap{
+  display:flex;gap:8px;padding:10px;background:var(--card2);
+  border:1px solid var(--border);border-radius:var(--radius-sm);margin-top:8px;
+}
+.comment-input-wrap input{flex:1;background:transparent;border:none;font-size:.8rem;padding:4px 0}
+.comment-filter{display:flex;gap:6px;margin-bottom:12px}
+
+/* Threads brand color */
+.threads-brand{color:#e4405f}
+
+/* ─── WEATHER PAGE ─── */
+.wx-current-card{
+  background:linear-gradient(135deg,var(--card) 0%,rgba(79,142,247,.12) 100%);
+  border:1px solid rgba(79,142,247,.3);border-radius:var(--radius);padding:24px;
+  display:flex;gap:24px;align-items:center;flex-wrap:wrap;margin-bottom:16px;
+}
+.wx-icon{font-size:4rem;line-height:1;flex-shrink:0}
+.wx-current-main{flex:1;min-width:160px}
+.wx-current-temp{font-size:3rem;font-weight:700;line-height:1;margin-bottom:4px}
+.wx-current-desc{font-size:1rem;color:var(--text);margin-bottom:8px}
+.wx-current-meta{display:flex;gap:16px;flex-wrap:wrap}
+.wx-meta-item{font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:4px}
+.wx-tomorrow-card{
+  background:linear-gradient(135deg,rgba(52,211,153,.08) 0%,var(--card) 100%);
+  border:2px solid rgba(52,211,153,.35);border-radius:var(--radius);
+  padding:20px;margin-bottom:16px;
+}
+.wx-tomorrow-label{
+  display:inline-block;background:var(--green);color:#0d1117;
+  font-size:.7rem;font-weight:700;padding:3px 10px;border-radius:99px;
+  margin-bottom:12px;letter-spacing:.04em;
+}
+.wx-tomorrow-main{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.wx-tomorrow-icon{font-size:3.5rem;line-height:1}
+.wx-tomorrow-info{flex:1;min-width:140px}
+.wx-tomorrow-desc{font-size:1.05rem;font-weight:600;margin-bottom:6px}
+.wx-tomorrow-temps{display:flex;gap:10px;align-items:baseline;margin-bottom:6px}
+.wx-tomorrow-max{font-size:2rem;font-weight:700;color:var(--red)}
+.wx-tomorrow-min{font-size:1.3rem;font-weight:700;color:var(--accent)}
+.wx-tomorrow-meta{display:flex;gap:14px;flex-wrap:wrap}
+.wx-tomorrow-advice{
+  margin-top:12px;padding:10px 14px;background:rgba(52,211,153,.08);
+  border-left:3px solid var(--green);border-radius:0 var(--radius-sm) var(--radius-sm) 0;
+  font-size:.8rem;line-height:1.6;color:var(--text);
+}
+.wx-forecast-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-bottom:16px}
+@media(max-width:900px){.wx-forecast-grid{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:600px){.wx-forecast-grid{grid-template-columns:repeat(2,1fr)}}
+.wx-day-card{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);
+  padding:10px 6px;text-align:center;transition:border .18s;
+}
+.wx-day-card.today-card{border-color:var(--accent);background:rgba(79,142,247,.06)}
+.wx-day-card.tomorrow-card{border-color:var(--green);background:rgba(52,211,153,.06)}
+.wx-day-card:hover{border-color:var(--accent)}
+.wx-day-name{font-size:.7rem;color:var(--muted);margin-bottom:5px;font-weight:600}
+.wx-day-icon{font-size:1.6rem;margin-bottom:4px}
+.wx-day-desc{font-size:.62rem;color:var(--muted);margin-bottom:5px;line-height:1.3}
+.wx-day-temps{display:flex;justify-content:center;gap:5px;margin-bottom:3px}
+.wx-day-max{font-size:.82rem;font-weight:700;color:var(--red)}
+.wx-day-min{font-size:.82rem;font-weight:700;color:var(--accent)}
+.wx-day-rain{font-size:.65rem;color:var(--accent2)}
+.wx-day-wind{font-size:.62rem;color:var(--muted);margin-top:2px}
+.wx-warning-bar{
+  border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:16px;
+  display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;
+}
+.wx-warning-bar.safe{background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.3)}
+.wx-warning-bar.has-warning{background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3)}
+.wx-warning-bar.has-advisory{background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3)}
+.wx-warning-icon{font-size:1.1rem;flex-shrink:0;margin-top:1px}
+.wx-warning-content{flex:1}
+.wx-warning-title{font-size:.8rem;font-weight:700;margin-bottom:5px}
+.wx-warning-badges{display:flex;flex-wrap:wrap;gap:5px}
+.wx-badge-danger{background:rgba(248,113,113,.2);color:var(--red);border:1px solid rgba(248,113,113,.4);padding:2px 10px;border-radius:99px;font-size:.72rem;font-weight:600}
+.wx-badge-warning{background:rgba(251,191,36,.2);color:var(--yellow);border:1px solid rgba(251,191,36,.4);padding:2px 10px;border-radius:99px;font-size:.72rem;font-weight:600}
+.wx-badge-info{background:rgba(79,142,247,.15);color:var(--accent);border:1px solid rgba(79,142,247,.3);padding:2px 10px;border-radius:99px;font-size:.72rem;font-weight:600}
+.wx-marine-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px}
+.wx-marine-header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.wx-marine-now{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px}
+.wx-marine-stat{
+  background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);
+  padding:10px 14px;flex:1;min-width:100px;text-align:center;
+}
+.wx-marine-stat-val{font-size:1.4rem;font-weight:700;margin-bottom:2px}
+.wx-marine-stat-label{font-size:.68rem;color:var(--muted)}
+.wx-marine-level{display:inline-flex;align-items:center;gap:6px;padding:5px 14px;border-radius:99px;font-size:.8rem;font-weight:700;margin-bottom:12px}
+.wx-marine-level.safe{background:rgba(52,211,153,.15);color:var(--green);border:1px solid rgba(52,211,153,.3)}
+.wx-marine-level.caution{background:rgba(251,191,36,.15);color:var(--yellow);border:1px solid rgba(251,191,36,.3)}
+.wx-marine-level.danger{background:rgba(248,113,113,.15);color:var(--red);border:1px solid rgba(248,113,113,.3)}
+.wx-marine-level.extreme{background:var(--red);color:#fff;border:1px solid var(--red);animation:wx-pulse .8s infinite}
+@keyframes wx-pulse{0%,100%{opacity:1}50%{opacity:.6}}
+.wx-marine-7day{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+@media(max-width:700px){.wx-marine-7day{grid-template-columns:repeat(4,1fr)}}
+.wx-marine-day{background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 4px;text-align:center}
+.wx-marine-day-name{font-size:.65rem;color:var(--muted);margin-bottom:4px}
+.wx-marine-day-wave{font-size:.9rem;font-weight:700}
+.wx-marine-day-period{font-size:.62rem;color:var(--muted);margin-top:2px}
+.wx-loading{text-align:center;padding:48px;color:var(--muted);font-size:.88rem}
+.wx-error{text-align:center;padding:32px;color:var(--red);font-size:.82rem}
+.wx-section-title{font-size:.85rem;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.wx-gen-tabs{display:flex;gap:4px;margin-bottom:12px;flex-wrap:wrap}
+.wx-type-tabs{display:flex;gap:4px;margin-bottom:14px;flex-wrap:wrap}
+.wx-gen-result{
+  background:var(--card2);border:1px solid var(--border);border-radius:var(--radius-sm);
+  padding:16px;white-space:pre-wrap;font-size:.82rem;line-height:1.8;
+  max-height:340px;overflow-y:auto;
+}
+.wx-updated{font-size:.68rem;color:var(--muted);text-align:right;margin-bottom:10px}
+</style>
+</head>
+<body>
+
+<!-- ─── SIDEBAR ─── -->
+<nav id="sidebar">
+  <div class="sidebar-logo">SNS自動投稿ツール<span>X / Threads / 自動生成</span></div>
+  <div class="nav-section">マーケティング</div>
+  <div class="nav-item active" onclick="showPage('x-post')"><span class="nav-icon">𝕏</span>X自動投稿</div>
+  <div class="nav-item" onclick="showPage('threads')"><span class="nav-icon" style="font-size:.9rem">⊕</span>Threads投稿</div>
+  <div class="nav-item" onclick="showPage('comment-tree')"><span class="nav-icon">🌳</span>動画コメントツリー</div>
+  <div class="nav-item" onclick="showPage('dm-tool')"><span class="nav-icon">💬</span>DM営業文生成</div>
+  <div class="nav-item" onclick="showPage('note-tool')"><span class="nav-icon">📝</span>note記事量産</div>
+  <div class="nav-item" onclick="showPage('lp-gen')"><span class="nav-icon">📱</span>LINE LP生成</div>
+  <div class="nav-item" onclick="showPage('rival')"><span class="nav-icon">🔍</span>競合リサーチ</div>
+  <div class="nav-section">収益管理</div>
+  <div class="nav-item" onclick="showPage('affiliate')"><span class="nav-icon">💰</span>アフィリ収益</div>
+  <div class="nav-item" onclick="showPage('simulator')"><span class="nav-icon">📊</span>収益シミュレーター</div>
+  <div class="nav-section">成長</div>
+  <div class="nav-item" onclick="showPage('roadmap')"><span class="nav-icon">🗺️</span>副業ロードマップ</div>
+  <div class="nav-section">販売</div>
+  <div class="nav-item" onclick="showPage('ranking')"><span class="nav-icon">🏆</span>動画ランキング</div>
+  <div class="nav-section">地域情報</div>
+  <div class="nav-item" onclick="showPage('osaka-weather')"><span class="nav-icon">🌤️</span>大阪天気予報</div>
+</nav>
+
+<!-- ─── MAIN ─── -->
+<div id="main">
+
+<!-- ════════════════════════════════════════
+     1. X自動投稿
+════════════════════════════════════════ -->
+<div id="page-x-post" class="page active">
+  <div class="page-header">
+    <div class="page-title">𝕏 X自動投稿ツール</div>
+    <div class="page-sub">バズ投稿を自動生成・カレンダーで予約管理</div>
+  </div>
+  <div class="grid grid-2" style="margin-bottom:20px">
+    <div class="card">
+      <div style="font-size:.85rem;font-weight:700;margin-bottom:14px">投稿設定</div>
+      <div class="form-group"><label>ジャンル</label>
+        <select id="x-genre">
+          <option>副業・マネタイズ</option><option>ノアの方舟プロジェクト</option>
+          <option>ドローンショー</option><option>旅・観光</option>
+          <option>ビジネス・マインド</option><option>NFT・クリプト</option>
+          <option>スイバー（水上タクシー）</option>
+        </select>
+      </div>
+      <div class="form-group"><label>ターゲット層</label>
+        <select id="x-target">
+          <option>20〜30代サラリーマン</option><option>主婦・パートタイム</option>
+          <option>学生・Z世代</option><option>起業家・フリーランス</option>
+          <option>投資家・富裕層</option>
+        </select>
+      </div>
+      <div class="form-group"><label>投稿頻度</label>
+        <select id="x-freq">
+          <option value="1">1日1回</option><option value="2">1日2回</option>
+          <option value="3">1日3回</option><option value="7">週1回</option>
+        </select>
+      </div>
+      <div class="form-group"><label>フック・キーワード（任意）</label>
+        <input id="x-keyword" placeholder="例：月収100万、ノアの方舟、ドローン" />
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="generateXPosts()">🚀 バズ投稿を10本生成</button>
+    </div>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="font-size:.85rem;font-weight:700">予約済み投稿</div>
+        <div id="x-reserve-count" class="badge badge-blue">0件</div>
+      </div>
+      <div id="x-reserved-list" style="max-height:200px;overflow-y:auto">
+        <div style="color:var(--muted);font-size:.78rem;text-align:center;padding:20px">まだ予約なし</div>
+      </div>
+    </div>
+  </div>
+  <!-- Generated posts swiper -->
+  <div class="card" style="margin-bottom:20px" id="x-swiper-card" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+      <div style="font-size:.85rem;font-weight:700">生成された投稿 <span id="x-gen-count" class="badge badge-green" style="display:none">10本</span></div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <span style="font-size:.72rem;color:var(--muted)">← → でスワイプ</span>
+        <button class="btn btn-sm btn-ghost" onclick="saveAllPosts('X')" style="font-size:.72rem">💾 全件保存</button>
+      </div>
+    </div>
+    <div class="swiper-wrap" id="x-swiper-wrap">
+      <div class="swiper-track" id="x-swiper-track"></div>
+    </div>
+    <div class="swiper-nav" id="x-swiper-nav" style="display:none">
+      <button class="btn btn-ghost btn-sm" onclick="xSwipe(-1)">◀ 前</button>
+      <div class="swiper-dots" id="x-swiper-dots"></div>
+      <span class="swiper-counter" id="x-swiper-counter">1 / 10</span>
+      <button class="btn btn-ghost btn-sm" onclick="xSwipe(1)">次 ▶</button>
+    </div>
+  </div>
+  <!-- Calendar -->
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div style="font-size:.85rem;font-weight:700">📅 投稿カレンダー</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost btn-sm" onclick="calMove(-1)">◀</button>
+        <span id="cal-title" style="font-size:.82rem;min-width:100px;text-align:center;line-height:32px"></span>
+        <button class="btn btn-ghost btn-sm" onclick="calMove(1)">▶</button>
+      </div>
+    </div>
+    <div class="calendar-grid" id="cal-head"></div>
+    <div class="calendar-grid" id="cal-body" style="margin-top:4px"></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     2. アフィリ収益
+════════════════════════════════════════ -->
+<div id="page-affiliate" class="page">
+  <div class="page-header">
+    <div class="page-title">💰 アフィリエイト収益管理</div>
+    <div class="page-sub">ASP別・案件別・月別で収益を可視化</div>
+  </div>
+  <div class="grid grid-4" style="margin-bottom:20px">
+    <div class="stat-card"><div class="stat-label">今月収益</div><div class="stat-value" id="aff-month">¥0</div><div class="stat-sub stat-up" id="aff-month-diff">―</div></div>
+    <div class="stat-card"><div class="stat-label">年間収益</div><div class="stat-value" id="aff-year">¥0</div><div class="stat-sub">累計</div></div>
+    <div class="stat-card"><div class="stat-label">目標達成率</div><div class="stat-value" id="aff-rate">0%</div><div class="stat-sub" id="aff-goal-txt">目標未設定</div></div>
+    <div class="stat-card"><div class="stat-label">案件数</div><div class="stat-value" id="aff-campaigns">0</div><div class="stat-sub">アクティブ</div></div>
+  </div>
+  <div class="grid grid-2" style="margin-bottom:20px">
+    <div class="card">
+      <div style="font-size:.85rem;font-weight:700;margin-bottom:12px">月別収益グラフ</div>
+      <canvas id="aff-monthly-chart" height="180"></canvas>
+    </div>
+    <div class="card">
+      <div style="font-size:.85rem;font-weight:700;margin-bottom:12px">ASP別収益</div>
+      <canvas id="aff-asp-chart" height="180"></canvas>
+    </div>
+  </div>
+  <div class="grid grid-2">
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="font-size:.85rem;font-weight:700">収益入力</div>
+      </div>
+      <div class="form-group"><label>ASP名</label>
+        <select id="aff-asp-sel">
+          <option>A8.net</option><option>バリューコマース</option><option>もしもアフィリエイト</option>
+          <option>afb</option><option>TGアフィリエイト</option><option>独自</option>
+        </select>
+      </div>
+      <div class="form-group"><label>案件名</label><input id="aff-campaign-name" placeholder="例：FX口座開設" /></div>
+      <div class="form-group"><label>金額（円）</label><input id="aff-amount" type="number" placeholder="10000" /></div>
+      <div class="form-group"><label>月</label><input id="aff-month-input" type="month" /></div>
+      <button class="btn btn-success" style="width:100%" onclick="addAffRevenue()">+ 追加</button>
+      <div style="margin-top:16px">
+        <label>月間目標額（円）</label>
+        <div style="display:flex;gap:8px">
+          <input id="aff-goal-input" type="number" placeholder="300000" />
+          <button class="btn btn-primary btn-sm" onclick="setAffGoal()">設定</button>
+        </div>
+        <div class="progress-wrap" style="margin-top:8px">
+          <div class="progress-fill" id="aff-progress-bar" style="width:0%;background:var(--green)"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div style="font-size:.85rem;font-weight:700;margin-bottom:12px">案件リスト</div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>ASP</th><th>案件名</th><th>月</th><th>収益</th><th></th></tr></thead>
+          <tbody id="aff-table-body"><tr><td colspan="5" style="text-align:center;color:var(--muted)">データなし</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     3. LINE LP生成
+════════════════════════════════════════ -->
+<div id="page-lp-gen" class="page">
+  <div class="page-header">
+    <div class="page-title">📱 LINE集客 LP ジェネレーター</div>
+    <div class="page-sub">入力するだけでコピペ可能なHTMLを自動生成</div>
+  </div>
+  <div class="grid grid-2">
+    <div class="card">
+      <div style="font-size:.85rem;font-weight:700;margin-bottom:14px">LP設定</div>
+      <div class="form-group"><label>メインキャッチコピー</label>
+        <input id="lp-catch" placeholder="例：月収100万円を実現した秘密を無料公開中！" />
+      </div>
+      <div class="form-group"><label>サブコピー</label>
+        <input id="lp-sub" placeholder="例：たった3ステップで始められる副業ノウハウ" />
+      </div>
+      <div class="form-group"><label>特典①</label><input id="lp-benefit1" placeholder="例：完全マニュアルPDF（非売品）" /></div>
+      <div class="form-group"><label>特典②</label><input id="lp-benefit2" placeholder="例：限定オンライン相談30分無料" /></div>
+      <div class="form-group"><label>特典③</label><input id="lp-benefit3" placeholder="例：メンバー限定チャットグループ招待" /></div>
+      <div class="form-group"><label>CTA文言</label>
+        <input id="lp-cta" placeholder="例：今すぐ無料で友だち追加する" />
+      </div>
+      <div class="form-group"><label>LINE追加URL</label>
+        <input id="lp-lineurl" placeholder="https://lin.ee/xxxxxxx" />
+      </div>
+      <div class="form-group"><label>カラーテーマ</label>
+        <select id="lp-theme">
+          <option value="green">LINE グリーン</option>
+          <option value="navy">ネイビー</option>
+          <option value="orange">オレンジ</option>
+          <option value="dark">ダーク</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="generateLP()">⚡ LP HTMLを生成</button>
+    </div>
+    <div>
+      <div class="card" style="margin-bottom:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="font-size:.85rem;font-weight:700">プレビュー</div>
+          <button class="btn btn-sm btn-ghost" onclick="copyLPHtml()">📋 HTMLをコピー</button>
+        </div>
+        <div id="lp-preview-area" class="lp-preview" style="min-height:100px;color:#999;font-size:.8rem;display:flex;align-items:center;justify-content:center">
+          左側を入力して「生成」を押してください
+        </div>
+      </div>
+      <div class="card">
+        <div style="font-size:.85rem;font-weight:700;margin-bottom:10px">生成されたHTML</div>
+        <textarea id="lp-html-output" style="min-height:120px;font-family:monospace;font-size:.72rem" readonly placeholder="HTMLがここに出力されます"></textarea>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     4. 副業ロードマップ
+════════════════════════════════════════ -->
+<div id="page-roadmap" class="page">
+  <div class="page-header">
+    <div class="page-title">🗺️ 副業ロードマップ作成</div>
+    <div class="page-sub">条件入力 → 最短収益化ロードマップ＋進捗チェック</div>
+  </div>
+  <div class="grid grid-2" style="margin-bottom:20px">
+    <div class="card">
+      <div style="font-size:.85rem;font-weight:700;margin-bottom:14px">プロフィール入力</div>
+      <div class="form-group"><label>1日の空き時間</label>
+        <select id="rm-time">
+          <option>30分未満</option><option>30分〜1時間</option><option>1〜2時間</option>
+          <option>2〜3時間</option><option>3時間以上</option>
+        </select>
+      </div>
+      <div class="form-group"><label>メインスキル</label>
+        <select id="rm-skill">
+          <option>ライティング・文章</option><option>SNS・発信</option><option>デザイン</option>
+          <option>プログラミング</option><option>営業・コミュニケーション</option>
+          <option>特になし・初心者</option>
+        </select>
+      </div>
+      <div class="form-group"><label>初期投資可能額</label>
+        <select id="rm-budget">
+          <option>0円（完全無料）</option><option>〜1万円</option><option>〜5万円</option>
+          <option>〜10万円</option><option>10万円以上</option>
+        </select>
+      </div>
+      <div class="form-group"><label>目標月収</label>
+        <select id="rm-goal">
+          <option>月3万円</option><option>月5万円</option><option>月10万円</option>
+          <option>月30万円</option><option>月100万円以上</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="generateRoadmap()">🗺️ ロードマップ生成</button>
+    </div>
+    <div class="card" id="rm-summary" style="display:none">
+      <div style="font-size:.85rem;font-weight:700;margin-bottom:10px">あなたへの推奨副業</div>
+      <div id="rm-recommend"></div>
+      <div style="margin-top:12px;font-size:.78rem;color:var(--muted)" id="rm-period-txt"></div>
+      <div class="progress-wrap" style="margin-top:8px"><div class="progress-fill" id="rm-progress" style="width:0%;background:var(--accent)"></div></div>
+      <div style="font-size:.72rem;color:var(--muted);margin-top:4px" id="rm-progress-txt">0 / 0 完了</div>
+    </div>
+  </div>
+  <div class="card">
+    <div style="font-size:.85rem;font-weight:700;margin-bottom:16px">ステップ一覧</div>
+    <div id="rm-steps"></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     5. note記事量産
+════════════════════════════════════════ -->
+<div id="page-note-tool" class="page">
+  <div class="page-header">
+    <div class="page-title">📝 note記事量産ツール</div>
+    <div class="page-sub">キーワードからタイトル・見出し・本文を自動生成 + 履歴保存</div>
+  </div>
+  <div class="grid grid-2" style="margin-bottom:20px">
+    <div class="card">
+      <div style="font-size:.85rem;font-weight:700;margin-bottom:14px">記事設定</div>
+      <div class="form-group"><label>メインキーワード</label>
+        <input id="note-kw" placeholder="例：副業 初心者 月5万円" />
+      </div>
+      <div class="form-group"><label>記事の目的</label>
+        <select id="note-purpose">
+          <option>情報提供・教育</option><option>有料販売（note）</option>
+          <option>LINE誘導</option><option>SNSフォロワー獲得</option>
+        </select>
+      </div>
+      <div class="form-group"><label>文体</label>
+        <select id="note-style">
+          <option>フレンドリー・口語体</option><option>丁寧・ビジネス調</option>
+          <option>熱量高め・煽り系</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="generateNote()">✍️ 記事を生成</button>
+    </div>
+    <div class="card">
+      <div style="font-size:.85rem;font-weight:700;margin-bottom:10px">生成履歴</div>
+      <div id="note-history-list" style="max-height:180px;overflow-y:auto">
+        <div style="color:var(--muted);font-size:.78rem;text-align:center;padding:20px">まだ生成なし</div>
+      </div>
+    </div>
+  </div>
+  <div class="card" id="note-output-card" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div style="font-size:.85rem;font-weight:700">生成された記事</div>
+      <button class="btn btn-sm btn-ghost" onclick="copyNote()">📋 全文コピー</button>
+    </div>
+    <div id="note-output"></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     6. DM営業文
+════════════════════════════════════════ -->
+<div id="page-dm-tool" class="page">
+  <div class="page-header">
+    <div class="page-title">💬 DM営業文 自動作成ツール</div>
+    <div class="page-sub">プロフィールから刺さるDMを3パターン生成 + 送信管理</div>
+  </div>
+  <div class="grid grid-2" style="margin-bottom:20px">
+    <div class="card">
+      <div style="font-size:.85rem;font-weight:700;margin-bottom:14px">相手のプロフィール</div>
+      <div class="form-group"><label>相手のXユーザー名</label><input id="dm-username" placeholder="@username" /></div>
+      <div class="form-group"><label>自己紹介文 / 最近の投稿内容</label>
+        <textarea id="dm-profile" placeholder="例：「副業で稼ぎたいけどなかなか結果が出ない」「毎日忙しくてSNSを頑張れない」などのプロフィールや投稿内容"></textarea>
+      </div>
+      <div class="form-group"><label>自分のオファー内容</label>
+        <input id="dm-offer" placeholder="例：ノアの方舟プロジェクトへの参加・副業コンサル" />
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="generateDM()">💬 DM文を3パターン生成</button>
+    </div>
+    <div class="card">
+      <div style="font-size:.85rem;font-weight:700;margin-bottom:10px">送信済みリスト</div>
+      <div class="form-group" style="display:flex;gap:8px">
+        <input id="dm-add-user" placeholder="@username を追加" style="flex:1" />
+        <button class="btn btn-sm btn-ghost" onclick="addDMSent()">追加</button>
+      </div>
+      <div id="dm-sent-list" style="max-height:180px;overflow-y:auto">
+        <div style="color:var(--muted);font-size:.78rem;text-align:center;padding:20px">まだ送信記録なし</div>
+      </div>
+    </div>
+  </div>
+  <div class="card" id="dm-output-card" style="display:none">
+    <div style="font-size:.85rem;font-weight:700;margin-bottom:14px">生成されたDM文</div>
+    <div class="tabs">
+      <button class="tab active" onclick="dmTab(0,this)">🎩 堅め・丁寧</button>
+      <button class="tab" onclick="dmTab(1,this)">😊 カジュアル</button>
+      <button class="tab" onclick="dmTab(2,this)">🔥 煽り系</button>
+    </div>
+    <div id="dm-tab-0" class="tab-pane active"></div>
+    <div id="dm-tab-1" class="tab-pane"></div>
+    <div id="dm-tab-2" class="tab-pane"></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     7. 競合リサーチ
+════════════════════════════════════════ -->
+<div id="page-rival" class="page">
+  <div class="page-header">
+    <div class="page-title">🔍 競合リサーチ まとめアプリ</div>
+    <div class="page-sub">Xアカウントの投稿傾向・バズワードを比較分析</div>
+  </div>
+  <div class="card" style="margin-bottom:16px">
+    <div style="font-size:.85rem;font-weight:700;margin-bottom:12px">分析するアカウントを入力</div>
+    <div id="rival-inputs">
+      <div class="form-group" style="display:flex;gap:8px">
+        <input class="rival-url" placeholder="@アカウント名 または プロフィールURL" style="flex:1" />
+        <button class="btn btn-ghost btn-sm" onclick="removeRivalInput(this)">✕</button>
+      </div>
+      <div class="form-group" style="display:flex;gap:8px">
+        <input class="rival-url" placeholder="@アカウント名 または プロフィールURL" style="flex:1" />
+        <button class="btn btn-ghost btn-sm" onclick="removeRivalInput(this)">✕</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost btn-sm" onclick="addRivalInput()">+ アカウント追加</button>
+      <button class="btn btn-primary" onclick="analyzeRivals()">🔍 分析する</button>
+    </div>
+  </div>
+  <div id="rival-result" style="display:none">
+    <div class="card" style="margin-bottom:16px">
+      <div style="font-size:.85rem;font-weight:700;margin-bottom:12px">比較テーブル</div>
+      <div style="overflow-x:auto"><table id="rival-table">
+        <thead><tr>
+          <th>アカウント</th><th>推定フォロワー</th><th>投稿頻度/週</th>
+          <th>平均エンゲージ率</th><th>バズワード TOP3</th><th>投稿カテゴリ</th>
+        </tr></thead>
+        <tbody id="rival-tbody"></tbody>
+      </table></div>
+    </div>
+    <div class="grid grid-2">
+      <div class="card">
+        <div style="font-size:.85rem;font-weight:700;margin-bottom:12px">エンゲージメント率比較</div>
+        <canvas id="rival-engage-chart" height="200"></canvas>
+      </div>
+      <div class="card">
+        <div style="font-size:.85rem;font-weight:700;margin-bottom:12px">共通バズワード</div>
+        <div id="rival-buzzwords"></div>
+        <div style="margin-top:14px;font-size:.85rem;font-weight:700;margin-bottom:8px">投稿戦略アドバイス</div>
+        <div id="rival-advice" style="font-size:.78rem;line-height:1.7;color:var(--muted)"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     8. 収益シミュレーター
+════════════════════════════════════════ -->
+<div id="page-simulator" class="page">
+  <div class="page-header">
+    <div class="page-title">📊 副業収益シミュレーター</div>
+    <div class="page-sub">パラメータをスライドするだけでリアルタイム試算</div>
+  </div>
+  <div class="grid grid-2" style="margin-bottom:20px">
+    <div class="card">
+      <div style="font-size:.85rem;font-weight:700;margin-bottom:16px">パラメータ設定</div>
+      <div class="form-group">
+        <label>月間アクセス数: <strong id="sim-access-val">1,000</strong>人</label>
+        <input type="range" id="sim-access" min="100" max="100000" step="100" value="1000" oninput="updateSim()" style="padding:0;background:transparent;border:none" />
+      </div>
+      <div class="form-group">
+        <label>成約率: <strong id="sim-conv-val">3</strong>%</label>
+        <input type="range" id="sim-conv" min="0.1" max="20" step="0.1" value="3" oninput="updateSim()" style="padding:0;background:transparent;border:none" />
+      </div>
+      <div class="form-group">
+        <label>単価: <strong id="sim-price-val">¥10,000</strong></label>
+        <input type="range" id="sim-price" min="100" max="500000" step="100" value="10000" oninput="updateSim()" style="padding:0;background:transparent;border:none" />
+      </div>
+      <div class="form-group">
+        <label>月間コスト: <strong id="sim-cost-val">¥5,000</strong></label>
+        <input type="range" id="sim-cost" min="0" max="100000" step="500" value="5000" oninput="updateSim()" style="padding:0;background:transparent;border:none" />
+      </div>
+      <div class="form-group">
+        <label>アクセス月次成長率: <strong id="sim-growth-val">10</strong>%</label>
+        <input type="range" id="sim-growth" min="0" max="100" step="1" value="10" oninput="updateSim()" style="padding:0;background:transparent;border:none" />
+      </div>
+      <div class="form-group">
+        <label>目標月収: <strong id="sim-target-val">¥300,000</strong></label>
+        <input type="range" id="sim-target" min="10000" max="10000000" step="10000" value="300000" oninput="updateSim()" style="padding:0;background:transparent;border:none" />
+      </div>
+    </div>
+    <div>
+      <div class="grid grid-2" style="margin-bottom:12px">
+        <div class="stat-card"><div class="stat-label">今月の純利益</div><div class="stat-value stat-up" id="sim-monthly">¥0</div></div>
+        <div class="stat-card"><div class="stat-label">年間収益（予測）</div><div class="stat-value" id="sim-annual">¥0</div></div>
+        <div class="stat-card"><div class="stat-label">月間成約数</div><div class="stat-value" id="sim-contracts">0件</div></div>
+        <div class="stat-card"><div class="stat-label">目標達成まで</div><div class="stat-value" id="sim-reach">―</div></div>
+      </div>
+      <div class="card">
+        <div style="font-size:.82rem;font-weight:600;margin-bottom:8px">12ヶ月収益予測</div>
+        <canvas id="sim-chart" height="160"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     9. 動画ランキング
+════════════════════════════════════════ -->
+<div id="page-ranking" class="page">
+  <div class="page-header">
+    <div class="page-title">🏆 動画ランキング（週次TOP10）</div>
+    <div class="page-sub">ドローンショーQR動画・説明アニメ広告・ツアー申込動画を再生数で毎週更新</div>
+  </div>
+  <div class="grid grid-3" style="margin-bottom:16px">
+    <div class="stat-card"><div class="stat-label">総再生回数</div><div class="stat-value stat-up" id="rank-total-views">0</div></div>
+    <div class="stat-card"><div class="stat-label">今週の更新</div><div id="rank-update-date" class="stat-value" style="font-size:1rem">―</div></div>
+    <div class="stat-card"><div class="stat-label">1位の動画</div><div class="stat-value" id="rank-top-title" style="font-size:.85rem;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">―</div></div>
+  </div>
+  <div class="card" style="margin-bottom:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div style="font-size:.85rem;font-weight:700">今週のTOP 10</div>
+      <button class="btn btn-sm btn-primary" onclick="openAddVideoModal()">+ 動画を追加</button>
+    </div>
+    <div id="rank-list"></div>
+  </div>
+  <div class="card">
+    <div style="font-size:.85rem;font-weight:700;margin-bottom:12px">再生回数推移（週次）</div>
+    <canvas id="rank-chart" height="160"></canvas>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     THREADS 自動投稿
+════════════════════════════════════════ -->
+<div id="page-threads" class="page">
+  <div class="page-header">
+    <div class="page-title"><span class="threads-brand">⊕</span> Threads 自動投稿ツール</div>
+    <div class="page-sub">Threads最適化の長文・スレッド形式投稿を自動生成</div>
+  </div>
+  <div class="grid grid-2" style="margin-bottom:20px">
+    <div class="card">
+      <div style="font-size:.85rem;font-weight:700;margin-bottom:14px">投稿設定</div>
+      <div class="form-group"><label>ジャンル</label>
+        <select id="th-genre">
+          <option>副業・マネタイズ</option><option>ノアの方舟プロジェクト</option>
+          <option>ドローンショー</option><option>ライフスタイル</option>
+          <option>ビジネス・マインド</option>
+          <option>スイバー（水上タクシー）</option>
+        </select>
+      </div>
+      <div class="form-group"><label>投稿形式</label>
+        <select id="th-format">
+          <option value="single">シングル投稿（500文字）</option>
+          <option value="thread">スレッド形式（3連投稿）</option>
+          <option value="list">リスト形式（箇条書き）</option>
+        </select>
+      </div>
+      <div class="form-group"><label>トーン</label>
+        <select id="th-tone">
+          <option>親しみやすい・カジュアル</option>
+          <option>知識・教育系</option>
+          <option>ストーリー・体験談</option>
+          <option>問いかけ・議論促進</option>
+        </select>
+      </div>
+      <div class="form-group"><label>キーワード（任意）</label>
+        <input id="th-kw" placeholder="例：ノアの方舟、体験型観光、副業" />
+      </div>
+      <div class="form-group"><label>ハッシュタグ数</label>
+        <select id="th-hashtag">
+          <option value="0">なし（Threads推奨）</option>
+          <option value="3">3個</option>
+          <option value="5">5個</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" style="width:100%;background:linear-gradient(135deg,#833ab4,#e1306c)" onclick="generateThreads()">⊕ Threads投稿を5本生成</button>
+    </div>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="font-size:.85rem;font-weight:700">予約済みThreads投稿</div>
+        <div id="th-reserve-count" class="badge badge-purple">0件</div>
+      </div>
+      <div id="th-reserved-list" style="max-height:180px;overflow-y:auto">
+        <div style="color:var(--muted);font-size:.78rem;text-align:center;padding:20px">まだ予約なし</div>
+      </div>
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+        <div style="font-size:.78rem;color:var(--muted);margin-bottom:8px">📊 Threads投稿ヒント</div>
+        <div style="font-size:.74rem;color:var(--muted);line-height:1.7">
+          • ハッシュタグは少なめが伸びやすい<br>
+          • 午前7〜9時・夜21〜23時が高エンゲージ<br>
+          • 500文字以内に収めると最後まで読まれる<br>
+          • 問いかけで終わるとコメント率UP
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Threads swiper -->
+  <div class="card" id="th-swiper-card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+      <div style="font-size:.85rem;font-weight:700">生成された投稿 <span id="th-gen-count" class="badge badge-purple" style="display:none">5本</span></div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <span style="font-size:.72rem;color:var(--muted)">← → でスワイプ</span>
+        <button class="btn btn-sm btn-ghost" onclick="saveAllPosts('Threads')" style="font-size:.72rem">💾 全件保存</button>
+      </div>
+    </div>
+    <div class="swiper-wrap" id="th-swiper-wrap">
+      <div class="swiper-track" id="th-swiper-track">
+        <div class="swiper-slide" style="padding:20px;color:var(--muted);font-size:.8rem;text-align:center">設定を入力して「生成」を押してください</div>
+      </div>
+    </div>
+    <div class="swiper-nav" id="th-swiper-nav" style="display:none">
+      <button class="btn btn-ghost btn-sm" onclick="thSwipe(-1)">◀ 前</button>
+      <div class="swiper-dots" id="th-swiper-dots"></div>
+      <span class="swiper-counter" id="th-swiper-counter">1 / 5</span>
+      <button class="btn btn-ghost btn-sm" onclick="thSwipe(1)">次 ▶</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     動画コメントツリー
+════════════════════════════════════════ -->
+<div id="page-comment-tree" class="page">
+  <div class="page-header">
+    <div class="page-title">🌳 動画コメントツリー</div>
+    <div class="page-sub">動画ごとにコメント・返信をツリー形式で管理・返信文を生成</div>
+  </div>
+  <div class="grid grid-2" style="margin-bottom:16px">
+    <div class="card">
+      <div style="font-size:.85rem;font-weight:700;margin-bottom:12px">動画を選択</div>
+      <div class="form-group">
+        <select id="ct-video-sel" onchange="ctSelectVideo()">
+          <option value="">── 動画を選択 ──</option>
+        </select>
+      </div>
+      <div class="form-group"><label>コメントを追加</label>
+        <div class="comment-input-wrap">
+          <div class="comment-avatar" style="width:28px;height:28px;font-size:.68rem;flex-shrink:0">自分</div>
+          <input id="ct-new-comment" placeholder="コメントを入力…" onkeydown="if(event.key==='Enter')ctAddComment()" />
+          <button class="btn btn-primary btn-sm" onclick="ctAddComment()">投稿</button>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div style="font-size:.85rem;font-weight:700;margin-bottom:10px">コメント統計</div>
+      <div class="grid grid-2">
+        <div><div class="stat-label">総コメント数</div><div class="stat-value" id="ct-total" style="font-size:1.4rem">0</div></div>
+        <div><div class="stat-label">未返信</div><div class="stat-value stat-down" id="ct-unreplied" style="font-size:1.4rem">0</div></div>
+        <div><div class="stat-label">返信済み</div><div class="stat-value stat-up" id="ct-replied" style="font-size:1.4rem">0</div></div>
+        <div><div class="stat-label">ポジティブ率</div><div class="stat-value" id="ct-positive" style="font-size:1.4rem">―</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+      <div style="font-size:.85rem;font-weight:700" id="ct-video-title-label">動画を選択してください</div>
+      <div class="comment-filter">
+        <button class="tab active btn-sm" onclick="ctFilter('all',this)">全て</button>
+        <button class="tab btn-sm" onclick="ctFilter('unreplied',this)">未返信</button>
+        <button class="tab btn-sm" onclick="ctFilter('positive',this)">ポジティブ</button>
+        <button class="tab btn-sm" onclick="ctFilter('negative',this)">ネガティブ</button>
+      </div>
+    </div>
+    <div id="ct-tree"></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     大阪天気予報
+════════════════════════════════════════ -->
+<div id="page-osaka-weather" class="page">
+  <div class="page-header">
+    <div class="page-title">🌤️ 大阪天気予報</div>
+    <div class="page-sub">気象庁データ（Open-Meteo）＋ 波浪情報 ＋ 警報・注意報 → SNS投稿自動生成</div>
+  </div>
+
+  <!-- ① 警報・注意報バー -->
+  <div id="wx-warning-wrap">
+    <div class="wx-warning-bar safe"><span class="wx-warning-icon">✅</span><div class="wx-warning-content"><div class="wx-warning-title" style="color:var(--green)">データ取得中...</div></div></div>
+  </div>
+
+  <!-- ② 現在の天気 -->
+  <div id="wx-current-wrap">
+    <div class="wx-loading">🌐 天気データを取得中...</div>
+  </div>
+
+  <!-- ③ 明日の天気（重点） -->
+  <div id="wx-tomorrow-wrap" style="display:none">
+    <div class="wx-section-title">🗓️ 明日の天気 <span class="badge badge-green" style="font-size:.65rem">重要</span></div>
+    <div class="wx-tomorrow-card">
+      <div class="wx-tomorrow-label">TOMORROW</div>
+      <div class="wx-tomorrow-main">
+        <div class="wx-tomorrow-icon" id="wx-tomorrow-icon">—</div>
+        <div class="wx-tomorrow-info">
+          <div class="wx-tomorrow-desc" id="wx-tomorrow-desc">—</div>
+          <div class="wx-tomorrow-temps">
+            <span class="wx-tomorrow-max" id="wx-tomorrow-max">—</span>
+            <span style="color:var(--muted);font-size:1rem">/</span>
+            <span class="wx-tomorrow-min" id="wx-tomorrow-min">—</span>
+          </div>
+          <div class="wx-tomorrow-meta">
+            <span class="wx-meta-item" id="wx-tomorrow-rain">☔ —</span>
+            <span class="wx-meta-item" id="wx-tomorrow-wind">💨 —</span>
+          </div>
+        </div>
+      </div>
+      <div class="wx-tomorrow-advice" id="wx-tomorrow-advice"></div>
+    </div>
+  </div>
+
+  <!-- ④ 今週7日間予報 -->
+  <div id="wx-forecast-wrap" style="display:none">
+    <div class="wx-section-title">📅 今週の天気（7日間）</div>
+    <div class="wx-forecast-grid" id="wx-forecast-grid"></div>
+  </div>
+
+  <!-- ⑤ 波浪情報 -->
+  <div id="wx-marine-wrap" style="display:none">
+    <div class="wx-marine-card">
+      <div class="wx-marine-header">
+        <span style="font-size:1.4rem">⛵</span>
+        <div class="wx-section-title" style="margin-bottom:0">波浪情報（大阪湾）</div>
+        <div id="wx-marine-level-badge"></div>
+      </div>
+      <div class="wx-marine-now" id="wx-marine-now"></div>
+      <div class="wx-section-title" style="font-size:.78rem;margin-bottom:8px">📊 7日間の最大波高</div>
+      <div class="wx-marine-7day" id="wx-marine-7day"></div>
+      <div style="margin-top:12px;font-size:.75rem;color:var(--muted);line-height:1.6" id="wx-marine-advice"></div>
+    </div>
+  </div>
+
+  <!-- ⑥ SNS投稿生成 -->
+  <div class="card" id="wx-gen-card" style="display:none">
+    <div class="wx-section-title">📣 天気SNS投稿生成</div>
+
+    <!-- プラットフォームタブ -->
+    <div class="wx-gen-tabs">
+      <button class="tab active" onclick="wxSelectPlatform('x',this)">𝕏 X (Twitter)</button>
+      <button class="tab" onclick="wxSelectPlatform('threads',this)">⊕ Threads</button>
+      <button class="tab" onclick="wxSelectPlatform('note',this)">📝 note</button>
+    </div>
+
+    <!-- 投稿タイプ -->
+    <div class="wx-type-tabs">
+      <button class="tab active" onclick="wxSelectType('tomorrow',this)" style="font-size:.72rem;background:rgba(52,211,153,.15);border-color:rgba(52,211,153,.4);color:var(--green)">🗓️ 明日の天気（重点）</button>
+      <button class="tab" onclick="wxSelectType('weekly',this)" style="font-size:.72rem">📅 週間予報（7日間）</button>
+      <button class="tab" onclick="wxSelectType('marine',this)" style="font-size:.72rem">⛵ 波浪情報（船向け）</button>
+    </div>
+
+    <div class="grid grid-2" style="gap:12px;margin-bottom:14px">
+      <div class="form-group" style="margin-bottom:0">
+        <label>投稿トーン</label>
+        <select id="wx-tone">
+          <option value="casual">カジュアル（親しみやすい）</option>
+          <option value="info">情報提供型（実用的）</option>
+          <option value="engage">エンゲージ重視（問いかけ）</option>
+          <option value="hook">フック型（バズ狙い）</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label>追加キーワード（任意）</label>
+        <input id="wx-extra-kw" placeholder="例：お出かけ、花粉、熱中症対策" />
+      </div>
+    </div>
+
+    <button class="btn btn-primary" style="margin-bottom:16px;width:100%" onclick="wxGeneratePost()">✨ 投稿文を生成</button>
+
+    <div id="wx-gen-output" style="display:none">
+      <div class="wx-gen-result" id="wx-gen-text"></div>
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+        <button class="btn btn-sm btn-ghost" onclick="wxCopyPost()">📋 コピー</button>
+        <button class="btn btn-sm" style="background:rgba(52,211,153,.15);color:var(--green);border:none;cursor:pointer;padding:6px 14px;font-size:.75rem;font-weight:600;border-radius:6px;font-family:inherit" onclick="wxReserveToX()">📅 X予約に追加</button>
+        <button class="btn btn-sm" style="background:rgba(228,64,95,.15);color:#e4405f;border:none;cursor:pointer;padding:6px 14px;font-size:.75rem;font-weight:600;border-radius:6px;font-family:inherit" onclick="wxReserveToThreads()">📅 Threads予約に追加</button>
+        <button class="btn btn-sm" style="background:#000;color:#fff;border:none;cursor:pointer;padding:6px 14px;font-size:.75rem;font-weight:600;border-radius:6px;font-family:inherit" onclick="postToX(document.getElementById('wx-gen-text').textContent)">𝕏 今すぐ投稿</button>
+        <button class="btn btn-sm btn-ghost" onclick="wxGeneratePost()">🔄 再生成</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="wx-updated" id="wx-updated-label"></div>
+  <div style="text-align:right;margin-top:4px">
+    <button class="btn btn-ghost btn-sm" onclick="wxFetch()">🔄 データを更新</button>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<!-- ─── ADD VIDEO MODAL ─── -->
+<div class="modal-overlay" id="add-video-modal">
+  <div class="modal">
+    <div class="modal-title">動画を追加 <span class="modal-close" onclick="closeAddVideoModal()">✕</span></div>
+    <div class="form-group"><label>動画タイトル</label><input id="v-title" placeholder="例：ドローンショー2024ダイジェスト" /></div>
+    <div class="form-group"><label>カテゴリ</label>
+      <select id="v-cat">
+        <option>ドローンショー</option><option>説明アニメ広告</option><option>ツアー申込</option>
+        <option>スイバー（水上タクシー）</option>
+      </select>
+    </div>
+    <div class="form-group"><label>再生回数</label><input id="v-views" type="number" placeholder="10000" /></div>
+    <div class="form-group"><label>動画URL（任意）</label><input id="v-url" placeholder="https://..." /></div>
+    <button class="btn btn-primary" style="width:100%" onclick="addVideo()">追加する</button>
+  </div>
+</div>
+
+<!-- ─── CALENDAR MODAL ─── -->
+<div class="modal-overlay" id="cal-modal">
+  <div class="modal">
+    <div class="modal-title">投稿を予約 <span class="modal-close" onclick="closeCalModal()">✕</span></div>
+    <div id="cal-modal-body"></div>
+    <button class="btn btn-primary" style="width:100%;margin-top:12px" onclick="reservePost()">予約する</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════
+// UTILITIES
+// ══════════════════════════════════════════
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  event.currentTarget.classList.add('active');
+  if(id==='affiliate') initAffCharts();
+  if(id==='simulator') { initSimChart(); updateSim(); }
+  if(id==='ranking') initRankingChart();
+  if(id==='osaka-weather') wxInit();
+}
+// ── ワンクリック投稿 ──
+function postToX(text){
+  window.open('https://twitter.com/intent/tweet?text='+encodeURIComponent(text),'_blank');
+}
+function postToThreads(text){
+  window.open('https://www.threads.net/intent/post?text='+encodeURIComponent(text),'_blank');
+}
+
+// ── デスクトップ「自動生成」フォルダへ保存 ──
+async function savePost(platform,idx,text){
+  const genre=(platform==='X'
+    ? document.getElementById('x-genre')
+    : document.getElementById('th-genre'))?.value||platform;
+  const now=new Date();
+  const ts=`${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;
+  const filename=`[${platform}]_${genre}_投稿${idx+1}_${ts}.txt`;
+  const content=`プラットフォーム: ${platform}\nジャンル: ${genre}\n生成日時: ${now.toLocaleString('ja-JP')}\n${'─'.repeat(40)}\n\n${text}`;
+  try{
+    const res=await fetch('/save-file',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({filename,content})});
+    const data=await res.json();
+    if(data.ok) toast(`💾 保存完了 → デスクトップ/自動生成/${filename}`);
+  }catch(e){
+    toast('保存に失敗しました','var(--red)');
+  }
+}
+
+// ── 全件まとめ保存 ──
+async function saveAllPosts(platform){
+  const posts=platform==='X'?xGeneratedPosts:thGeneratedPosts;
+  if(!posts.length){toast('先に投稿を生成してください','var(--yellow)');return}
+  const genre=(platform==='X'
+    ? document.getElementById('x-genre')
+    : document.getElementById('th-genre'))?.value||platform;
+  const now=new Date();
+  const ts=`${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;
+  const filename=`[${platform}]_${genre}_全${posts.length}本_${ts}.txt`;
+  const content=`プラットフォーム: ${platform}\nジャンル: ${genre}\n生成日時: ${now.toLocaleString('ja-JP')}\n投稿数: ${posts.length}本\n${'═'.repeat(40)}\n\n`
+    +posts.map((p,i)=>`【投稿${i+1}】\n${p}`).join('\n\n'+'─'.repeat(40)+'\n\n');
+  try{
+    const res=await fetch('/save-file',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({filename,content})});
+    const data=await res.json();
+    if(data.ok) toast(`💾 全${posts.length}本を保存 → デスクトップ/自動生成/`);
+  }catch(e){
+    toast('保存に失敗しました','var(--red)');
+  }
+}
+
+function toast(msg,color='var(--green)'){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.style.background=color;
+  t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);
+}
+function copyText(txt){
+  navigator.clipboard.writeText(txt).then(()=>toast('コピーしました！'));
+}
+function fmtNum(n){return n.toLocaleString('ja-JP')}
+function fmtYen(n){return '¥'+n.toLocaleString('ja-JP')}
+
+// ══════════════════════════════════════════
+// 1. X AUTO POST
+// ══════════════════════════════════════════
+const buzzTemplates={
+  '副業・マネタイズ':[
+    `【衝撃】{kw}で月収を3倍にした方法を公開します\n\n99%の人がやっていないたった1つのコツ。\n\n✅ 今すぐ実践できる\n✅ 初期費用ゼロ\n✅ スキル不要\n\n詳細はリプ欄↓`,
+    `正直に言います。\n{kw}を始めて6ヶ月で月収が変わりました。\n\nでも最初の3ヶ月は全く稼げませんでした。\n\n転機になった「あの方法」を今夜だけ公開します。\n\nRTした人に資料を送ります👇`,
+    `「時間がない」は言い訳です。\n\n1日30分 × {kw} = 月5万円\n\nこれを否定する人は実際に試していない。\n\n具体的なやり方まとめました📝\n\n保存推奨 ↓↓↓`,
+    `{target}の皆さんに質問です。\n\n今の収入に満足していますか？\n\nNOと答えた方へ。\n{kw}で変えられます。\n\n1万人が実証した方法を無料公開中🔥`,
+    `これ知らなかったは損です。\n{kw}に関する最新情報↓\n\n• ポイント①\n• ポイント②  \n• ポイント③\n\n全部無料でできます。\nブックマーク必須🔖`,
+    `失敗談を話します。\n\n{kw}を始めた当初、私は3ヶ月で15万円溶かしました。\n\nでもその経験があったから今があります。\n\n同じ失敗をしてほしくないので\n「絶対やってはいけない5つのこと」を公開します👇`,
+    `{target}向け｜{kw}完全ロードマップ\n\n① STEP1\n② STEP2\n③ STEP3\n④ STEP4\n\n最短3ヶ月で結果が出る手順です。\n\nいいねしてくれた方に詳細版を送ります✉️`,
+    `今月の収益を公開します。\n\n{kw}だけで———万円でした。\n\n半年前の私には信じられない数字です。\n\nきっかけになったのはこれです↓\n（長いので続きはリプ）`,
+    `「副業って怪しくない？」\n\n正直そう思ってました。\n\nでも{kw}を知ってから考えが変わりました。\n\n怪しくない理由を3つ説明します。\n\n🧵スレッド↓`,
+    `{target}へ。今すぐフォローしてください。\n\n私が毎日投稿している内容は\n{kw}に関するノウハウです。\n\n全部無料です。\n全部実体験です。\n全部すぐ使えます。\n\nフォローする理由しかない🔥`
+  ],
+  'ノアの方舟プロジェクト':[
+    `【世界初】移動式水上博物館「ノアの方舟」が日本にやってくる🚢\n\n{kw}\n\nドローンショー×クラファン×体験型観光\n\n詳細はプロフのリンクから👆`,
+    `ノアの方舟プロジェクト、支援者募集中です⛵\n\n地球の未来を語る場所を一緒に作りませんか？\n\n✨ 支援特典あり\n✨ {kw}\n✨ 全国ツアー予定\n\nRT拡散お願いします🙏`,
+    `なぜ今、ノアの方舟なのか。\n\n{kw}の時代だからこそ\n「本物の体験」が価値を持ちます。\n\nデジタルでは絶対に味わえないもの。\n\nそれが私たちのプロジェクトです。`,
+    `ドローン×水上博物館×{kw}\n\nこの組み合わせを考えた人、天才だと思いました（自分ですが）\n\n次回の体験会の日程が決まりました📅\n詳細はリプ欄↓`,
+    `ノアの方舟に乗った人の感想↓\n\n「言葉にならない」\n「子供が泣いて喜んだ」  \n「{kw}を肌で感じた」\n\nこれが私たちが作りたいものです。\n\nクラファン継続中🙏`
+  ],
+  'ドローンショー':[
+    `【動画あり】昨夜のドローンショー、鳥肌が止まりません✨\n\n{kw}\n\n1000機のドローンが夜空を彩る様子は\n言葉では表現できない美しさ。\n\nRT数で次回開催地を決定します！`,
+    `ドローンショーの裏側を見せます🚁\n\n{kw}のために何ヶ月も準備してきたもの。\n\n全ての苦労が本番の5分間に詰まっています。\n\nブックマーク保存して後で見てください👆`,
+    `{target}の方へ｜\nドローンショー×ビジネスの新しい形\n\n{kw}でマネタイズする方法があります。\n\n一緒にやりませんか？\n気になる方はDMください📩`
+  ],
+  '旅・観光':[
+    `【保存版】日本の絶景スポット10選\n\n{kw}\n\nGWまでにブックマーク推奨です📖\n\nRT&フォローで詳細な地図を送ります🗾`,
+    `「また来たい」と思える旅の条件。\n\n1. {kw}\n2. 本物の体験がある\n3. ここだけの思い出になる\n\nノアの方舟ツアーがまさにこれです🚢`,
+    `{target}向け旅行プラン公開中✈️\n\n{kw}を楽しめる特別コースを\n期間限定で受付中です。\n\n詳細はリプ欄↓`
+  ],
+  'ビジネス・マインド':[
+    `稼げない人の共通点。\n\n{kw}を「知っているだけ」で実行しない。\n\n知識0でも行動する人に、\n知識100で行動しない人は絶対に勝てません。\n\n今日から変えてください。`,
+    `成功者が共通して言うこと↓\n\n「{kw}より{target}を理解すること」\n\nこれだけです。\nシンプルだけど実践できる人は10人に1人。`,
+    `ビジネスで失敗する人はみんな同じ間違いをします。\n\n「{kw}より先に完璧を求める」\n\n完璧な準備より\n不完全な実行のほうが100倍価値があります。🔥`
+  ],
+  'NFT・クリプト':[
+    `【注目】{kw}の最新動向まとめ\n\n{target}が今すぐ知るべき情報を\n分かりやすく解説します。\n\nブックマーク必須📌`,
+    `{kw}で稼いだ話をします。\n\n{target}でも再現できる方法です。\n\n条件：行動力がある人限定\n詳細はリプ欄↓`
+  ],
+  'スイバー（水上タクシー）':[
+    `【革命】水上タクシー「スイバー」が都市移動を変える🛥️\n\n渋滞ゼロ。橋もいらない。\n川・海・湖——水があればどこでも走れる。\n\n✅ アプリで即配車\n✅ 観光×通勤×緊急対応\n✅ CO2排出ゼロ（電動モデル）\n\nノアの方舟プロジェクトと連携中📲`,
+    `{target}の皆さんに質問です。\n\n毎日の通勤、ストレスたまってませんか？\n\nスイバー（水上タクシー）を使えば\n川を使ったゼロストレス移動が実現します。\n\nまずはアプリをダウンロードしてみて🛥️\n\nRT&保存で乗車クーポンをプレゼント🎁`,
+    `スイバーに乗った人の声↓\n\n「え、こんなに速いの？」\n「景色が最高すぎて仕事のことを忘れた」\n「子どもが大喜びで泣いた」\n\n体験した人にしかわからない感動があります。\n\n{target}の方、ぜひ一度体験してみてください🌊`,
+    `水上タクシー × AI配車 × {kw}\n\nスイバーが日本の水辺都市交通を再定義します。\n\n🗾 全国の河川・港に展開予定\n📱 アプリ一つで配車完了\n🌿 電動船でエコ移動\n\n先行登録受付中👇\nプロフのリンクから`,
+    `「水上タクシーって高いんでしょ？」\n\n違います。\n\nスイバーは{target}でも使える価格帯。\n\n試乗キャンペーン実施中🛥️\n\n今週末、水の上を走ってみませんか？\n\n詳細はリプ欄↓`,
+    `ノアの方舟×スイバーの最強コラボ発表🚢🛥️\n\n方舟に乗って、水上タクシーで帰る。\n\n「水の上での体験」を一日中楽しめる\n特別プランが始まります。\n\n{target}の方に特に見てほしいです。\nRTで拡散をお願いします🙏`,
+    `スイバー（水上タクシー）で稼ぐ方法があります。\n\n{kw}と組み合わせると\n移動中も発信→集客→収益化のループが完成。\n\nアフィリエイト提携も受付中📲\n\n気になる方はDMください✉️`,
+    `都市の渋滞問題、本気で解決します。\n\n陸の道が混んでいるなら——\n\n水の道を使えばいい。\n\nそれがスイバーのシンプルな答えです🌊\n\n{target}の街にも展開予定。\n開始通知を受け取るには→プロフのリンク`,
+    `スイバーを体験した子どもたちが言いました。\n\n「また乗りたい！」\n「魚が見えた！」\n「ノアの方舟みたい！」\n\n水上移動は、体験であり教育であり冒険です。\n\n家族で乗れるプランも準備中🛥️✨`,
+    `【限定公開】スイバー×{kw}のビジネスモデルを解説します。\n\n水上交通×観光×副業収益化——\n\nこの3つが揃うと、普通の副業では出せない数字が見えてきます。\n\n詳細は今夜21時にスペースで話します🎙️\n\nフォロー＆通知ONを忘れずに🔔`
+  ]
+};
+
+let xGeneratedPosts=[];
+let xReservedPosts=JSON.parse(localStorage.getItem('xReserved')||'[]');
+let calDate=new Date();
+let selectedCalDay=null;
+let selectedPostIndex=null;
+
+let xSwiperIdx=0;
+function generateXPosts(){
+  const genre=document.getElementById('x-genre').value;
+  const target=document.getElementById('x-target').value;
+  const kw=document.getElementById('x-keyword').value||genre;
+  const templates=buzzTemplates[genre]||buzzTemplates['副業・マネタイズ'];
+  xGeneratedPosts=templates.slice(0,10).map(t=>t.replace(/\{kw\}/g,kw).replace(/\{target\}/g,target));
+  xSwiperIdx=0;
+  renderXSwiper();
+  toast('バズ投稿10本を生成しました！');
+  renderCalendar();
+}
+function renderXSwiper(){
+  const track=document.getElementById('x-swiper-track');
+  const nav=document.getElementById('x-swiper-nav');
+  const hint=document.getElementById('x-swiper-hint');
+  const count=document.getElementById('x-gen-count');
+  count.style.display='inline';
+  if(hint)hint.style.display='block';
+  nav.style.display='flex';
+  track.innerHTML=xGeneratedPosts.map((p,i)=>`
+    <div class="swiper-slide">
+      <div class="swipe-card">
+        <div class="swipe-card-num">
+          <span class="badge badge-blue">投稿 ${i+1}</span>
+          <span style="color:var(--muted)">${p.length}文字</span>
+          ${p.length>140?'<span class="badge badge-yellow">長文</span>':'<span class="badge badge-green">140字以内</span>'}
+        </div>
+        <div class="swipe-card-text">${p.replace(/\n/g,'<br>')}</div>
+        <div class="swipe-card-actions">
+          <button class="btn btn-sm btn-ghost" onclick="copyText(xGeneratedPosts[${i}])">📋 コピー</button>
+          <button class="btn btn-sm" style="background:rgba(52,211,153,.15);color:var(--green);border:none;cursor:pointer;padding:6px 14px;font-size:.75rem;font-weight:600;border-radius:6px;font-family:inherit" onclick="openCalModal(${i})">📅 予約</button>
+          <button class="btn btn-sm" style="background:#000;color:#fff;border:none;cursor:pointer;padding:6px 14px;font-size:.75rem;font-weight:600;border-radius:6px;font-family:inherit" onclick="postToX(xGeneratedPosts[${i}])">𝕏 投稿</button>
+          <button class="btn btn-sm" style="background:rgba(79,142,247,.15);color:var(--accent);border:none;cursor:pointer;padding:6px 14px;font-size:.75rem;font-weight:600;border-radius:6px;font-family:inherit" onclick="savePost('X',${i},xGeneratedPosts[${i}])">💾 保存</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+  // dots
+  document.getElementById('x-swiper-dots').innerHTML=xGeneratedPosts.map((_,i)=>
+    `<div class="swiper-dot${i===0?' active':''}" onclick="xSwipeTo(${i})"></div>`
+  ).join('');
+  xSwipeTo(0);
+}
+function xSwipe(dir){xSwipeTo(Math.max(0,Math.min(xGeneratedPosts.length-1,xSwiperIdx+dir)));}
+function xSwipeTo(i){
+  xSwiperIdx=i;
+  document.getElementById('x-swiper-track').style.transform=`translateX(-${i*100}%)`;
+  document.getElementById('x-swiper-counter').textContent=`${i+1} / ${xGeneratedPosts.length}`;
+  document.querySelectorAll('#x-swiper-dots .swiper-dot').forEach((d,j)=>d.classList.toggle('active',j===i));
+}
+// keyboard nav
+document.addEventListener('keydown',e=>{
+  if(document.getElementById('page-x-post').classList.contains('active')&&xGeneratedPosts.length){
+    if(e.key==='ArrowLeft')xSwipe(-1);
+    if(e.key==='ArrowRight')xSwipe(1);
+  }
+});
+
+function openCalModal(i){
+  selectedPostIndex=i;
+  const body=document.getElementById('cal-modal-body');
+  body.innerHTML=`
+    <div style="background:var(--card2);padding:12px;border-radius:8px;font-size:.78rem;margin-bottom:12px;max-height:100px;overflow:hidden;text-overflow:ellipsis">${xGeneratedPosts[i].replace(/\n/g,'<br>').substring(0,200)}...</div>
+    <div class="form-group"><label>予約日時</label><input type="datetime-local" id="cal-dt" /></div>
+  `;
+  document.getElementById('cal-modal').classList.add('open');
+}
+function closeCalModal(){document.getElementById('cal-modal').classList.remove('open')}
+function reservePost(){
+  const dt=document.getElementById('cal-dt').value;
+  if(!dt){toast('日時を選択してください','var(--red)');return}
+  xReservedPosts.push({text:xGeneratedPosts[selectedPostIndex],dt,id:Date.now()});
+  localStorage.setItem('xReserved',JSON.stringify(xReservedPosts));
+  renderReserved();renderCalendar();
+  closeCalModal();toast('予約しました！');
+}
+function renderReserved(){
+  const el=document.getElementById('x-reserved-list');
+  document.getElementById('x-reserve-count').textContent=xReservedPosts.length+'件';
+  if(!xReservedPosts.length){el.innerHTML='<div style="color:var(--muted);font-size:.78rem;text-align:center;padding:20px">まだ予約なし</div>';return}
+  el.innerHTML=xReservedPosts.map((p,i)=>`
+    <div style="padding:8px;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:flex-start">
+      <div style="flex:1">
+        <div style="font-size:.68rem;color:var(--accent)">${new Date(p.dt).toLocaleString('ja-JP')}</div>
+        <div style="font-size:.75rem;margin-top:2px;overflow:hidden;max-height:36px">${p.text.substring(0,60)}...</div>
+      </div>
+      <button class="btn-danger btn" onclick="deleteReserved(${i})">削除</button>
+    </div>
+  `).join('');
+}
+function deleteReserved(i){
+  xReservedPosts.splice(i,1);
+  localStorage.setItem('xReserved',JSON.stringify(xReservedPosts));
+  renderReserved();renderCalendar();
+}
+
+// Calendar
+function renderCalendar(){
+  const y=calDate.getFullYear(),m=calDate.getMonth();
+  document.getElementById('cal-title').textContent=`${y}年${m+1}月`;
+  const head=document.getElementById('cal-head');
+  head.innerHTML=['日','月','火','水','木','金','土'].map(d=>`<div class="cal-head">${d}</div>`).join('');
+  const body=document.getElementById('cal-body');
+  const first=new Date(y,m,1).getDay();
+  const days=new Date(y,m+1,0).getDate();
+  const today=new Date();
+  let html='';
+  for(let i=0;i<first;i++) html+=`<div class="cal-day empty"></div>`;
+  for(let d=1;d<=days;d++){
+    const isToday=today.getFullYear()===y&&today.getMonth()===m&&today.getDate()===d;
+    const posts=xReservedPosts.filter(p=>{
+      const pd=new Date(p.dt);
+      return pd.getFullYear()===y&&pd.getMonth()===m&&pd.getDate()===d;
+    });
+    html+=`<div class="cal-day${isToday?' today':''}" onclick="calDayClick(${d})">
+      <div class="cal-num">${d}</div>
+      ${posts.map(p=>`<div class="cal-post">${p.text.substring(0,12)}</div>`).join('')}
+    </div>`;
+  }
+  body.innerHTML=html;
+}
+function calMove(dir){calDate=new Date(calDate.getFullYear(),calDate.getMonth()+dir,1);renderCalendar()}
+function calDayClick(d){/* future: open day detail */}
+// Init calendar
+calDate=new Date();
+renderCalendar();
+renderReserved();
+
+// ══════════════════════════════════════════
+// 2. AFFILIATE
+// ══════════════════════════════════════════
+let affData=JSON.parse(localStorage.getItem('affData')||'[]');
+let affGoal=parseInt(localStorage.getItem('affGoal')||'0');
+let affMonthlyChart=null,affAspChart=null;
+
+function addAffRevenue(){
+  const asp=document.getElementById('aff-asp-sel').value;
+  const name=document.getElementById('aff-campaign-name').value;
+  const amount=parseInt(document.getElementById('aff-amount').value||0);
+  const month=document.getElementById('aff-month-input').value;
+  if(!name||!amount||!month){toast('全項目を入力してください','var(--red)');return}
+  affData.push({asp,name,amount,month,id:Date.now()});
+  localStorage.setItem('affData',JSON.stringify(affData));
+  updateAffStats();renderAffTable();initAffCharts();
+  document.getElementById('aff-campaign-name').value='';
+  document.getElementById('aff-amount').value='';
+  toast('収益を追加しました！');
+}
+function setAffGoal(){
+  affGoal=parseInt(document.getElementById('aff-goal-input').value||0);
+  localStorage.setItem('affGoal',affGoal);
+  updateAffStats();toast('目標を設定しました！');
+}
+function deleteAff(id){
+  affData=affData.filter(d=>d.id!==id);
+  localStorage.setItem('affData',JSON.stringify(affData));
+  updateAffStats();renderAffTable();initAffCharts();
+}
+function updateAffStats(){
+  const now=new Date();
+  const curMonth=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const monthTotal=affData.filter(d=>d.month===curMonth).reduce((s,d)=>s+d.amount,0);
+  const yearTotal=affData.filter(d=>d.month&&d.month.startsWith(String(now.getFullYear()))).reduce((s,d)=>s+d.amount,0);
+  const campaigns=new Set(affData.map(d=>d.name)).size;
+  document.getElementById('aff-month').textContent=fmtYen(monthTotal);
+  document.getElementById('aff-year').textContent=fmtYen(yearTotal);
+  document.getElementById('aff-campaigns').textContent=campaigns;
+  if(affGoal>0){
+    const rate=Math.min(100,Math.round(monthTotal/affGoal*100));
+    document.getElementById('aff-rate').textContent=rate+'%';
+    document.getElementById('aff-goal-txt').textContent='目標: '+fmtYen(affGoal);
+    document.getElementById('aff-progress-bar').style.width=rate+'%';
+  }
+}
+function renderAffTable(){
+  const tb=document.getElementById('aff-table-body');
+  if(!affData.length){tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--muted)">データなし</td></tr>';return}
+  tb.innerHTML=affData.slice().reverse().map(d=>`
+    <tr><td><span class="badge badge-blue">${d.asp}</span></td><td>${d.name}</td><td>${d.month}</td>
+    <td style="color:var(--green);font-weight:600">${fmtYen(d.amount)}</td>
+    <td><button class="btn btn-danger btn-sm" onclick="deleteAff(${d.id})">削除</button></td></tr>
+  `).join('');
+}
+function initAffCharts(){
+  // Monthly
+  const months=[];const now=new Date();
+  for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);months.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`)}
+  const monthlyData=months.map(m=>affData.filter(d=>d.month===m).reduce((s,d)=>s+d.amount,0));
+  const ctx1=document.getElementById('aff-monthly-chart').getContext('2d');
+  if(affMonthlyChart)affMonthlyChart.destroy();
+  affMonthlyChart=new Chart(ctx1,{type:'bar',data:{labels:months.map(m=>m.slice(5)+'月'),datasets:[{label:'収益',data:monthlyData,backgroundColor:'rgba(79,142,247,.6)',borderColor:'var(--accent)',borderWidth:1,borderRadius:4}]},options:{plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'var(--muted)',font:{size:10}}},y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'var(--muted)',font:{size:10},callback:v=>'¥'+v.toLocaleString()}}}}});
+  // ASP
+  const aspMap={};affData.forEach(d=>{aspMap[d.asp]=(aspMap[d.asp]||0)+d.amount});
+  const ctx2=document.getElementById('aff-asp-chart').getContext('2d');
+  if(affAspChart)affAspChart.destroy();
+  const colors=['rgba(79,142,247,.7)','rgba(52,211,153,.7)','rgba(167,139,250,.7)','rgba(251,191,36,.7)','rgba(248,113,113,.7)','rgba(45,212,191,.7)'];
+  affAspChart=new Chart(ctx2,{type:'doughnut',data:{labels:Object.keys(aspMap),datasets:[{data:Object.values(aspMap),backgroundColor:colors,borderWidth:0}]},options:{plugins:{legend:{position:'right',labels:{color:'var(--muted)',font:{size:10},boxWidth:10}}},cutout:'60%'}});
+}
+updateAffStats();renderAffTable();
+
+// ══════════════════════════════════════════
+// 3. LINE LP GENERATOR
+// ══════════════════════════════════════════
+const lpThemes={
+  green:{primary:'#06C755',secondary:'#059f43',bg:'#f0fff4',text:'#1a3c2a'},
+  navy:{primary:'#1a3a6b',secondary:'#2563eb',bg:'#eff6ff',text:'#1e3a5f'},
+  orange:{primary:'#ea580c',secondary:'#f97316',bg:'#fff7ed',text:'#431407'},
+  dark:{primary:'#6366f1',secondary:'#8b5cf6',bg:'#0f172a',text:'#e2e8f0'}
+};
+function generateLP(){
+  const catch_=document.getElementById('lp-catch').value||'LINE登録で特典プレゼント中！';
+  const sub=document.getElementById('lp-sub').value||'今すぐ登録して特典を受け取ってください';
+  const b1=document.getElementById('lp-benefit1').value||'特典①';
+  const b2=document.getElementById('lp-benefit2').value||'特典②';
+  const b3=document.getElementById('lp-benefit3').value||'特典③';
+  const cta=document.getElementById('lp-cta').value||'今すぐ無料で友だち追加する';
+  const lineurl=document.getElementById('lp-lineurl').value||'#';
+  const theme=lpThemes[document.getElementById('lp-theme').value];
+  const html=`<!DOCTYPE html>
+<html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>LINE登録ページ</title>
+<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Hiragino Kaku Gothic ProN',sans-serif;background:${theme.bg};color:${theme.text};line-height:1.7}.wrap{max-width:480px;margin:0 auto;padding:20px}.hero{background:${theme.primary};color:#fff;padding:40px 20px;text-align:center;border-radius:16px 16px 0 0}.hero h1{font-size:1.4rem;font-weight:900;line-height:1.4;margin-bottom:12px}.hero p{font-size:.9rem;opacity:.9}.benefits{background:#fff;padding:24px 20px;border-left:4px solid ${theme.primary}}.benefits h2{font-size:1rem;font-weight:700;margin-bottom:14px;color:${theme.primary}}.benefit-item{display:flex;gap:10px;margin-bottom:10px;font-size:.88rem}.benefit-icon{color:${theme.primary};font-weight:900;min-width:20px}.cta{padding:20px;text-align:center;background:${theme.bg}}.cta-btn{display:block;background:${theme.primary};color:#fff;text-decoration:none;padding:16px;border-radius:99px;font-size:1rem;font-weight:700;margin-bottom:8px;box-shadow:0 4px 12px rgba(0,0,0,.2)}.note{font-size:.72rem;color:#999}</style></head>
+<body><div class="wrap">
+<div class="hero"><h1>${catch_}</h1><p>${sub}</p></div>
+<div class="benefits"><h2>🎁 登録特典</h2>
+<div class="benefit-item"><span class="benefit-icon">①</span>${b1}</div>
+<div class="benefit-item"><span class="benefit-icon">②</span>${b2}</div>
+<div class="benefit-item"><span class="benefit-icon">③</span>${b3}</div></div>
+<div class="cta"><a href="${lineurl}" class="cta-btn">🟢 ${cta}</a><p class="note">登録は無料です。いつでも解除できます。</p></div>
+</div></body></html>`;
+  document.getElementById('lp-html-output').value=html;
+  const preview=document.getElementById('lp-preview-area');
+  preview.innerHTML=html.replace(/<script[\s\S]*?<\/script>/gi,'');
+  preview.style.display='block';
+  toast('LP HTMLを生成しました！');
+}
+function copyLPHtml(){
+  const html=document.getElementById('lp-html-output').value;
+  if(!html){toast('先にLPを生成してください','var(--red)');return}
+  copyText(html);
+}
+
+// ══════════════════════════════════════════
+// 4. ROADMAP
+// ══════════════════════════════════════════
+const roadmaps={
+  'ライティング・文章':{title:'Webライター→コンテンツ販売',period:'2〜3ヶ月',steps:[
+    {t:'クラウドソーシング登録',d:'ランサーズ・クラウドワークスに登録。プロフィールを充実させる'},
+    {t:'最初の5件を受注する',d:'低単価でも実績作り優先。コンペに積極参加'},
+    {t:'ポートフォリオを作る',d:'noteに記事を投稿してURLで実績アピール'},
+    {t:'単価交渉・直接契約へ',d:'継続クライアントと直接交渉で文字単価1円以上を目指す'},
+    {t:'noteで有料記事販売',d:'蓄積したノウハウをnoteで1,000〜5,000円で販売開始'},
+    {t:'LINE集客→コンサル化',d:'ライティングコンサルで月10万円モデルへ'}
+  ]},
+  'SNS・発信':{title:'SNS運用代行→インフルエンサー戦略',period:'3〜6ヶ月',steps:[
+    {t:'自分のXアカウントを育てる',d:'ターゲットジャンルで毎日3投稿。フォロワー1000人を目標'},
+    {t:'SNS運用代行を受注',d:'中小企業や個人事業主のSNS運用を月3〜5万円で請け負う'},
+    {t:'実績をもとに単価UP',d:'成果（フォロワー増加・エンゲージ率）を数値化して交渉'},
+    {t:'独自コンテンツ販売',d:'SNS攻略note・テンプレート・コンサルを販売'},
+    {t:'コミュニティ運営',d:'サロン・Discordで月額課金モデルへ展開'},
+    {t:'法人向け提案へスケール',d:'マーケ会社との提携や法人直接営業で単価10万以上へ'}
+  ]},
+  '特になし・初心者':{title:'ポイ活→アフィリエイト入門コース',period:'1〜2ヶ月',steps:[
+    {t:'ポイントサイトで基礎固め',d:'ハピタス・モッピー登録。月3,000〜5,000円の副収入を体験'},
+    {t:'アフィリエイトASP登録',d:'A8.net・もしもアフィリエイト登録。仕組みを理解する'},
+    {t:'ブログまたはXを開設',d:'無料のnoteかXで発信開始。SEOより習慣化を優先'},
+    {t:'最初の1,000円を稼ぐ',d:'小さくても成功体験を作ることが最重要'},
+    {t:'コンテンツを積み上げる',d:'週2〜3本のペースで継続。検索流入を育てる'},
+    {t:'月3万円の安定収益へ',d:'実績が出た媒体に集中投資。仕組みを複製する'}
+  ]},
+  'デザイン':{title:'グラフィックデザイン→LPデザイン専門',period:'2〜4ヶ月',steps:[
+    {t:'Canvaで実績ポートフォリオ作成',d:'SNSバナー・サムネをサンプル制作。Behanceに掲載'},
+    {t:'クラウドワークスで初受注',d:'サムネ・アイコン案件で実績を積む（1件1,000円〜）'},
+    {t:'LP・バナー専門に絞る',d:'単価の高いLP制作案件（1件3〜10万円）に絞って営業'},
+    {t:'SNSでデザイン投稿',d:'Xでbefore/after投稿。フォロワーから直接依頼を獲得'},
+    {t:'テンプレート販売',d:'Canvaテンプレをnote・BOOTHで販売'},
+    {t:'デザインコンサルへ',d:'ブランディング相談で月額10〜30万円のサービスへ'}
+  ]},
+  'プログラミング':{title:'フリーランスエンジニア最短ルート',period:'3〜6ヶ月',steps:[
+    {t:'得意言語を1つ決める',d:'Python・JavaScript・PHPなど1つに絞って深める'},
+    {t:'クラウドワークスで小案件受注',d:'5〜10万円のスクレイピング・ツール制作案件から'},
+    {t:'GitHubを整備する',d:'ポートフォリオをGitHubに公開。READMEを充実させる'},
+    {t:'エージェント登録',d:'レバテック・クラウドテックに登録。月60〜100万案件を狙う'},
+    {t:'SaaS・ツール販売',d:'作ったツールをnote・BASEで販売（1,000〜5万円）'},
+    {t:'技術系YouTubeで影響力',d:'解説動画でフォロワー獲得→コンサル・勉強会へ'}
+  ]},
+  '営業・コミュニケーション':{title:'高単価コンサル・代理店モデル',period:'1〜3ヶ月',steps:[
+    {t:'得意ジャンルを1つ決める',d:'保険・不動産・人材など得意な業界でコンサルを開始'},
+    {t:'SNSで専門家ポジションを作る',d:'業界知識をXで毎日発信。DM営業の土台を作る'},
+    {t:'無料相談→有料コンサルへ',d:'最初は無料で実績作り。成果が出たら5〜10万円/月で継続'},
+    {t:'代理店・アフィリ提携',d:'金融・保険商品のアフィリで成果報酬を稼ぐ'},
+    {t:'グループコンサル化',d:'1:Nモデルで月額10万円×5人などの設計へ'},
+    {t:'法人顧問契約へ',d:'月30〜50万円の顧問契約でストック収益を確保'}
+  ]},
+};
+let rmChecks=JSON.parse(localStorage.getItem('rmChecks')||'{}');
+let rmCurrentKey='';
+
+function generateRoadmap(){
+  const skill=document.getElementById('rm-skill').value;
+  const goal=document.getElementById('rm-goal').value;
+  const time=document.getElementById('rm-time').value;
+  const key=skill in roadmaps?skill:'特になし・初心者';
+  rmCurrentKey=key;
+  const rm=roadmaps[key];
+  document.getElementById('rm-summary').style.display='block';
+  document.getElementById('rm-recommend').innerHTML=`<div style="font-size:1rem;font-weight:700;color:var(--accent)">${rm.title}</div>`;
+  document.getElementById('rm-period-txt').textContent=`目標達成期間目安: ${rm.period} ／ 目標: ${goal}`;
+  if(!rmChecks[key]) rmChecks[key]=rm.steps.map(()=>false);
+  updateRmProgress();
+  const steps=document.getElementById('rm-steps');
+  steps.innerHTML=rm.steps.map((s,i)=>`
+    <div class="roadmap-step">
+      <div class="step-line">
+        <div class="step-dot ${rmChecks[key][i]?'done':''}" id="sdot-${i}">${i+1}</div>
+        ${i<rm.steps.length-1?'<div class="step-connector"></div>':''}
+      </div>
+      <div class="step-content">
+        <div class="step-title">${s.t}</div>
+        <div class="step-desc">${s.d}</div>
+        <label class="step-check"><input type="checkbox" ${rmChecks[key][i]?'checked':''} onchange="toggleStep(${i},this)"> 完了済み</label>
+      </div>
+    </div>
+  `).join('');
+  toast('ロードマップを生成しました！');
+}
+function toggleStep(i,el){
+  rmChecks[rmCurrentKey][i]=el.checked;
+  localStorage.setItem('rmChecks',JSON.stringify(rmChecks));
+  const dot=document.getElementById('sdot-'+i);
+  if(el.checked)dot.classList.add('done');else dot.classList.remove('done');
+  updateRmProgress();
+}
+function updateRmProgress(){
+  const checks=rmChecks[rmCurrentKey]||[];
+  const done=checks.filter(Boolean).length;
+  const total=checks.length;
+  const pct=total?Math.round(done/total*100):0;
+  document.getElementById('rm-progress').style.width=pct+'%';
+  document.getElementById('rm-progress-txt').textContent=`${done} / ${total} 完了（${pct}%）`;
+}
+
+// ══════════════════════════════════════════
+// 5. NOTE ARTICLE
+// ══════════════════════════════════════════
+let noteHistory=JSON.parse(localStorage.getItem('noteHistory')||'[]');
+let currentNoteOutput='';
+
+function generateNote(){
+  const kw=document.getElementById('note-kw').value||'副業';
+  const purpose=document.getElementById('note-purpose').value;
+  const style=document.getElementById('note-style').value;
+  const titles=[
+    `【完全版】${kw}で月収を上げた人がやっていた3つのこと`,
+    `${kw}を始める前に絶対知っておくべき5つの落とし穴`,
+    `未経験から${kw}で稼ぐ最短ロードマップ2024`,
+    `${kw}で結果が出ない人に共通する「致命的な間違い」`,
+    `${kw}のリアルな話。私が3ヶ月で変わったこと全部書きます`
+  ];
+  const selectedTitle=titles[0];
+  const hooks={
+    'フレンドリー・口語体':'この記事を読んでいるあなた、もしかして',
+    '丁寧・ビジネス調':'本記事では、多くの方が関心をお持ちの',
+    '熱量高め・煽り系':'はっきり言います。'
+  };
+  const output=`# ${selectedTitle}
+
+## はじめに
+${hooks[style]}「${kw}」について、実践ベースで解説します。
+
+---
+
+## 目次
+1. なぜ今「${kw}」なのか
+2. 結果が出る人と出ない人の違い
+3. 最短で稼ぐための具体的ステップ
+4. よくある失敗パターンと対策
+5. まとめ・次のアクション
+
+---
+
+## 1. なぜ今「${kw}」なのか
+
+日本の平均給与が伸び悩む中、${kw}に注目が集まっています。
+
+実際に私の周りで${kw}を始めた人のうち、
+**6ヶ月継続した人の8割が月1万円以上の収益を達成**しました。
+
+重要なのは「何をやるか」ではなく「どう続けるか」です。
+
+---
+
+## 2. 結果が出る人と出ない人の違い
+
+結果が出る人の共通点：
+- **行動が速い**（考える前にやる）
+- **発信を続ける**（結果が出なくても3ヶ月は継続）
+- **数字で管理する**（感覚ではなくデータで判断）
+
+結果が出ない人の共通点：
+- 完璧な準備を待ち続ける
+- 1〜2ヶ月でやめる
+- 複数のことを同時にやりすぎる
+
+---
+
+## 3. 最短で稼ぐための具体的ステップ
+
+### STEP 1: 環境を整える（1週間）
+必要なアカウント・ツールを準備します。費用はほぼゼロでOK。
+
+### STEP 2: 最初の1円を稼ぐ（2〜4週間）
+金額は関係ありません。「稼げる仕組み」を体験することが目的です。
+
+### STEP 3: 仕組みを改善する（1〜3ヶ月）
+データを見て改善を繰り返します。ここが9割の人が止まるポイント。
+
+### STEP 4: スケールする（3〜6ヶ月）
+うまくいった方法を拡大します。ここで収益が急増します。
+
+---
+
+## 4. よくある失敗パターンと対策
+
+**失敗①: ツールや情報収集に時間を使いすぎる**
+→ 対策: 最初の1ヶ月は「発信」だけに集中する
+
+**失敗②: 結果が出ないと方向転換しすぎる**
+→ 対策: 3ヶ月は同じ方法を続けると決める
+
+**失敗③: 一人で抱え込む**
+→ 対策: 仲間を作る or コミュニティに入る
+
+---
+
+## まとめ・次のアクション
+
+${kw}で稼ぐために今日やること：
+
+1. [ ] この記事をブックマークする
+2. [ ] 必要なアカウントを今日中に作る
+3. [ ] 最初の発信を今週中にする
+
+---
+
+${purpose==='LINE誘導'?`## 🎁 無料特典のお知らせ
+LINE登録で「${kw}完全攻略マニュアル」をプレゼント中！
+今すぐ友だち追加 → [こちらから](#)`:
+purpose==='有料販売（note）'?`---
+*この続きは有料記事です（¥980）*
+購入者限定で実際のスクリーンショットと数字を全公開しています。`:
+'最後まで読んでいただきありがとうございます。フォローといいねをよろしくお願いします！'}`;
+
+  currentNoteOutput=output;
+  document.getElementById('note-output-card').style.display='block';
+  document.getElementById('note-output').innerHTML=output.replace(/^# (.+)$/m,'<h1 style="font-size:1.2rem;font-weight:700;margin-bottom:8px">$1</h1>')
+    .replace(/^## (.+)$/gm,'<h2 style="font-size:1rem;font-weight:700;margin:16px 0 6px;color:var(--accent)">$2</h2>'.replace('$2','$1'))
+    .replace(/^### (.+)$/gm,'<h3 style="font-size:.88rem;font-weight:700;margin:12px 0 4px">$1</h3>')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\n/g,'<br>');
+  // Save history
+  noteHistory.unshift({kw,title:selectedTitle,date:new Date().toLocaleDateString('ja-JP'),id:Date.now()});
+  if(noteHistory.length>20)noteHistory.pop();
+  localStorage.setItem('noteHistory',JSON.stringify(noteHistory));
+  renderNoteHistory();
+  toast('記事を生成しました！');
+}
+function copyNote(){copyText(currentNoteOutput)}
+function renderNoteHistory(){
+  const el=document.getElementById('note-history-list');
+  if(!noteHistory.length){el.innerHTML='<div style="color:var(--muted);font-size:.78rem;text-align:center;padding:20px">まだ生成なし</div>';return}
+  el.innerHTML=noteHistory.map(h=>`
+    <div style="padding:8px;border-bottom:1px solid var(--border)">
+      <div style="font-size:.72rem;color:var(--muted)">${h.date}</div>
+      <div style="font-size:.78rem;margin-top:2px">${h.title.substring(0,40)}...</div>
+      <span class="badge badge-purple" style="margin-top:4px">${h.kw}</span>
+    </div>
+  `).join('');
+}
+renderNoteHistory();
+
+// ══════════════════════════════════════════
+// 6. DM TOOL
+// ══════════════════════════════════════════
+let dmSentList=JSON.parse(localStorage.getItem('dmSent')||'[]');
+let dmPatterns=['','',''];
+
+function generateDM(){
+  const username=document.getElementById('dm-username').value||'相手';
+  const profile=document.getElementById('dm-profile').value||'副業に興味がある方';
+  const offer=document.getElementById('dm-offer').value||'ノアの方舟プロジェクト';
+  dmPatterns=[
+    `${username} さん、はじめまして。\n\nプロフィールを拝見し、${profile}という点に共感してご連絡させていただきました。\n\n私は現在、${offer}に取り組んでおり、${username} さんのお力をお借りできればと思っております。\n\nもしよろしければ、一度詳しいお話を聞いていただけますでしょうか？\n\nお時間をいただけますと幸いです。よろしくお願いいたします。`,
+
+    `${username} さん、こんにちは！✨\n\nプロフ見てたら「あ、この人絶対合う！」と思って思い切ってDMしました笑\n\n「${profile}」ってとこ、めっちゃ共感です。\n\n実は今、${offer}っていう面白いことやってて、一緒にやれる人探してるんですよね〜。\n\n5分だけ話せます？ 絶対損しないと思うので！`,
+
+    `${username} さん！\n\n正直に言います。あなたのプロフ見て「この人は本物だ」と確信しました。\n\n「${profile}」——まさにその状況にいる人にしか伝えていない話があります。\n\n${offer}で今月すでに動いている人がいます。\n\nあなたが乗り遅れる前に、今すぐ返信してください。\n\n先着で動いた人だけが結果を出しています。🔥`
+  ];
+  document.getElementById('dm-output-card').style.display='block';
+  ['堅め・丁寧','カジュアル','煽り系'].forEach((_,i)=>{
+    document.getElementById('dm-tab-'+i).innerHTML=`
+      <div class="gen-item">
+        <div class="gen-text">${dmPatterns[i].replace(/\n/g,'<br>')}</div>
+        <button class="copy-btn" onclick="copyText(dmPatterns[${i}])">コピー</button>
+      </div>
+    `;
+  });
+  toast('DM文を3パターン生成しました！');
+}
+function dmTab(i,el){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+  document.getElementById('dm-tab-'+i).classList.add('active');
+}
+function addDMSent(){
+  const u=document.getElementById('dm-add-user').value.trim();
+  if(!u)return;
+  dmSentList.unshift({username:u,date:new Date().toLocaleDateString('ja-JP'),id:Date.now()});
+  localStorage.setItem('dmSent',JSON.stringify(dmSentList));
+  document.getElementById('dm-add-user').value='';
+  renderDMSent();toast('送信済みに追加しました！');
+}
+function renderDMSent(){
+  const el=document.getElementById('dm-sent-list');
+  if(!dmSentList.length){el.innerHTML='<div style="color:var(--muted);font-size:.78rem;text-align:center;padding:20px">まだ送信記録なし</div>';return}
+  el.innerHTML=dmSentList.map((d,i)=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:.82rem;flex:1">${d.username}</span>
+      <span style="font-size:.68rem;color:var(--muted)">${d.date}</span>
+      <span class="badge badge-green">送信済</span>
+      <button class="btn btn-danger" style="padding:2px 6px;font-size:.68rem" onclick="deleteDMSent(${i})">✕</button>
+    </div>
+  `).join('');
+}
+function deleteDMSent(i){dmSentList.splice(i,1);localStorage.setItem('dmSent',JSON.stringify(dmSentList));renderDMSent()}
+renderDMSent();
+
+// ══════════════════════════════════════════
+// 7. RIVAL RESEARCH
+// ══════════════════════════════════════════
+function addRivalInput(){
+  const div=document.createElement('div');
+  div.className='form-group';div.style.display='flex';div.style.gap='8px';
+  div.innerHTML=`<input class="rival-url" placeholder="@アカウント名 または プロフィールURL" style="flex:1" /><button class="btn btn-ghost btn-sm" onclick="removeRivalInput(this)">✕</button>`;
+  document.getElementById('rival-inputs').appendChild(div);
+}
+function removeRivalInput(btn){btn.parentElement.remove()}
+let rivalEngageChart=null;
+function analyzeRivals(){
+  const inputs=[...document.querySelectorAll('.rival-url')].map(i=>i.value.trim()).filter(Boolean);
+  if(!inputs.length){toast('アカウントを入力してください','var(--red)');return}
+  const buzzes=['副業','稼ぐ','月収','初心者','無料','限定','今すぐ','完全版','実績','爆益'];
+  const cats=['教育系','情報発信','体験談','ノウハウ','煽り系'];
+  const accounts=inputs.map(url=>{
+    const name=url.replace(/https?:\/\/[^/]+\//,'').replace(/^@/,'@').split('/')[0]||url;
+    return {
+      name,
+      followers:Math.floor(Math.random()*50000)+500,
+      freq:(Math.random()*14+1).toFixed(1),
+      engage:(Math.random()*8+0.5).toFixed(1),
+      buzz:buzzes.sort(()=>Math.random()-.5).slice(0,3),
+      cat:cats[Math.floor(Math.random()*cats.length)]
+    };
+  });
+  document.getElementById('rival-result').style.display='block';
+  document.getElementById('rival-tbody').innerHTML=accounts.map(a=>`
+    <tr>
+      <td><strong>${a.name}</strong></td>
+      <td>${fmtNum(a.followers)}人</td>
+      <td>${a.freq}回</td>
+      <td><span class="badge ${parseFloat(a.engage)>4?'badge-green':'badge-yellow'}">${a.engage}%</span></td>
+      <td><div class="chip-list">${a.buzz.map(b=>`<span class="chip">${b}</span>`).join('')}</div></td>
+      <td><span class="badge badge-purple">${a.cat}</span></td>
+    </tr>
+  `).join('');
+  // Engage chart
+  const ctx=document.getElementById('rival-engage-chart').getContext('2d');
+  if(rivalEngageChart)rivalEngageChart.destroy();
+  rivalEngageChart=new Chart(ctx,{type:'bar',data:{
+    labels:accounts.map(a=>a.name),
+    datasets:[{label:'エンゲージメント率%',data:accounts.map(a=>parseFloat(a.engage)),backgroundColor:'rgba(167,139,250,.6)',borderColor:'var(--accent2)',borderWidth:1,borderRadius:4}]
+  },options:{plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'var(--muted)',font:{size:10}}},y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'var(--muted)',font:{size:10}}}}}});
+  // Buzzwords
+  const allBuzz={};accounts.forEach(a=>a.buzz.forEach(b=>{allBuzz[b]=(allBuzz[b]||0)+1}));
+  const sorted=Object.entries(allBuzz).sort((a,b)=>b[1]-a[1]);
+  document.getElementById('rival-buzzwords').innerHTML=`<div class="chip-list">${sorted.map(([w,c])=>`<span class="chip">${w} <strong style="color:var(--accent)">(${c})</strong></span>`).join('')}</div>`;
+  // Advice
+  const topEngage=accounts.sort((a,b)=>parseFloat(b.engage)-parseFloat(a.engage))[0];
+  document.getElementById('rival-advice').innerHTML=`
+    • <strong>${topEngage.name}</strong> がエンゲージ率最高（${topEngage.engage}%）。投稿スタイルを参考にする。<br>
+    • 共通バズワード「${sorted.slice(0,2).map(([w])=>w).join('・')}」を自分の投稿に積極採用する。<br>
+    • 平均投稿頻度: <strong>${(accounts.reduce((s,a)=>s+parseFloat(a.freq),0)/accounts.length).toFixed(1)}回/週</strong>。この頻度以上で投稿すると競合に勝てる。<br>
+    • 上位アカウントが使う「${topEngage.cat}」カテゴリの投稿を増やす。
+  `;
+  toast('分析完了！');
+}
+
+// ══════════════════════════════════════════
+// 8. SIMULATOR
+// ══════════════════════════════════════════
+let simChart=null;
+function initSimChart(){
+  const ctx=document.getElementById('sim-chart').getContext('2d');
+  if(simChart)simChart.destroy();
+  simChart=new Chart(ctx,{type:'line',data:{labels:[],datasets:[
+    {label:'月収',data:[],borderColor:'var(--accent)',backgroundColor:'rgba(79,142,247,.1)',fill:true,tension:0.4,pointRadius:3},
+    {label:'純利益',data:[],borderColor:'var(--green)',backgroundColor:'rgba(52,211,153,.08)',fill:true,tension:0.4,pointRadius:3},
+  ]},options:{plugins:{legend:{labels:{color:'var(--muted)',font:{size:10}}}},scales:{x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'var(--muted)',font:{size:10}}},y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'var(--muted)',font:{size:10},callback:v=>'¥'+v.toLocaleString()}}}}});
+}
+function updateSim(){
+  const access=parseInt(document.getElementById('sim-access').value);
+  const conv=parseFloat(document.getElementById('sim-conv').value);
+  const price=parseInt(document.getElementById('sim-price').value);
+  const cost=parseInt(document.getElementById('sim-cost').value);
+  const growth=parseFloat(document.getElementById('sim-growth').value)/100;
+  const target=parseInt(document.getElementById('sim-target').value);
+  document.getElementById('sim-access-val').textContent=fmtNum(access);
+  document.getElementById('sim-conv-val').textContent=conv;
+  document.getElementById('sim-price-val').textContent=fmtYen(price);
+  document.getElementById('sim-cost-val').textContent=fmtYen(cost);
+  document.getElementById('sim-growth-val').textContent=Math.round(growth*100);
+  document.getElementById('sim-target-val').textContent=fmtYen(target);
+  const contracts=access*(conv/100);
+  const revenue=contracts*price;
+  const profit=revenue-cost;
+  document.getElementById('sim-monthly').textContent=fmtYen(Math.round(profit));
+  document.getElementById('sim-contracts').textContent=Math.round(contracts)+'件';
+  // 12 month projection
+  const labels=[];const revenues=[];const profits=[];
+  let curAccess=access;
+  let reachMonth=null;
+  for(let i=1;i<=12;i++){
+    labels.push(i+'ヶ月目');
+    const r=curAccess*(conv/100)*price;
+    const p=r-cost;
+    revenues.push(Math.round(r));profits.push(Math.round(p));
+    if(reachMonth===null&&p>=target)reachMonth=i;
+    curAccess=Math.round(curAccess*(1+growth));
+  }
+  document.getElementById('sim-annual').textContent=fmtYen(profits.reduce((s,v)=>s+Math.max(0,v),0));
+  document.getElementById('sim-reach').textContent=reachMonth?reachMonth+'ヶ月後':'12ヶ月超';
+  if(simChart){simChart.data.labels=labels;simChart.data.datasets[0].data=revenues;simChart.data.datasets[1].data=profits;simChart.update()}
+}
+
+// ══════════════════════════════════════════
+// 9. VIDEO RANKING
+// ══════════════════════════════════════════
+let videos=JSON.parse(localStorage.getItem('videos')||'null');
+if(!videos){videos=[
+  {id:1,title:'ノアの方舟 ドローンショー 2024ダイジェスト',cat:'ドローンショー',views:128400,url:'',week:[80000,95000,110000,128400]},
+  {id:2,title:'ノアの方舟プロジェクト完全解説アニメ',cat:'説明アニメ広告',views:98700,url:'',week:[40000,60000,82000,98700]},
+  {id:3,title:'国内ツアー申込方法・体験レポート',cat:'ツアー申込',views:67300,url:'',week:[20000,35000,52000,67300]},
+  {id:4,title:'ドローン1000機の夜空 横浜公演',cat:'ドローンショー',views:54200,url:'',week:[15000,28000,42000,54200]},
+  {id:5,title:'方舟の中の世界 VR体験レポート',cat:'説明アニメ広告',views:43100,url:'',week:[10000,22000,35000,43100]},
+  {id:6,title:'クラウドファンディング支援者インタビュー',cat:'ツアー申込',views:38900,url:'',week:[8000,18000,30000,38900]},
+  {id:7,title:'ドローンショー制作舞台裏',cat:'ドローンショー',views:31500,url:'',week:[5000,14000,24000,31500]},
+  {id:8,title:'ノアの方舟 グローバルツアー予告',cat:'説明アニメ広告',views:24700,url:'',week:[3000,10000,19000,24700]},
+  {id:9,title:'副業×ノアプロジェクト 参加者の声',cat:'ツアー申込',views:18200,url:'',week:[2000,7000,13000,18200]},
+  {id:10,title:'方舟QRスキャン体験イベントレポ',cat:'ドローンショー',views:12300,url:'',week:[1000,4000,9000,12300]},
+]}
+let rankingChart=null;
+
+function initRankingChart(){
+  const top5=videos.sort((a,b)=>b.views-a.views).slice(0,5);
+  const ctx=document.getElementById('rank-chart').getContext('2d');
+  if(rankingChart)rankingChart.destroy();
+  const colors=['rgba(79,142,247,.7)','rgba(52,211,153,.7)','rgba(167,139,250,.7)','rgba(251,191,36,.7)','rgba(248,113,113,.7)'];
+  rankingChart=new Chart(ctx,{type:'line',data:{
+    labels:['4週前','3週前','2週前','今週'],
+    datasets:top5.map((v,i)=>({label:v.title.substring(0,15)+'…',data:v.week||[0,0,0,v.views],borderColor:colors[i],backgroundColor:'transparent',tension:0.4,pointRadius:4}))
+  },options:{plugins:{legend:{labels:{color:'var(--muted)',font:{size:10},boxWidth:10}}},scales:{x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'var(--muted)',font:{size:10}}},y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'var(--muted)',font:{size:10},callback:v=>v>=10000?(v/10000).toFixed(0)+'万':v}}}}});
+}
+
+function renderRanking(){
+  const sorted=videos.slice().sort((a,b)=>b.views-a.views).slice(0,10);
+  const total=sorted.reduce((s,v)=>s+v.views,0);
+  document.getElementById('rank-total-views').textContent=fmtNum(total);
+  document.getElementById('rank-update-date').textContent=new Date().toLocaleDateString('ja-JP');
+  document.getElementById('rank-top-title').textContent=sorted[0]?.title||'―';
+  const catEmoji={'ドローンショー':'🚁','説明アニメ広告':'📽️','ツアー申込':'🚢','スイバー（水上タクシー）':'🛥️'};
+  const catColor={'ドローンショー':'badge-blue','説明アニメ広告':'badge-purple','ツアー申込':'badge-green','スイバー（水上タクシー）':'badge-yellow'};
+  document.getElementById('rank-list').innerHTML=sorted.map((v,i)=>`
+    <div class="rank-item">
+      <div class="rank-num ${i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':'other'}">${i<3?['🥇','🥈','🥉'][i]:i+1}</div>
+      <div class="rank-thumb">${catEmoji[v.cat]||'🎬'}</div>
+      <div class="rank-info">
+        <div class="rank-title">${v.title}</div>
+        <div class="rank-meta"><span class="badge ${catColor[v.cat]||'badge-blue'}">${v.cat}</span></div>
+      </div>
+      <div class="rank-views">▶ ${fmtNum(v.views)}</div>
+    </div>
+  `).join('');
+}
+function openAddVideoModal(){document.getElementById('add-video-modal').classList.add('open')}
+function closeAddVideoModal(){document.getElementById('add-video-modal').classList.remove('open')}
+function addVideo(){
+  const title=document.getElementById('v-title').value;
+  const cat=document.getElementById('v-cat').value;
+  const views=parseInt(document.getElementById('v-views').value||0);
+  const url=document.getElementById('v-url').value;
+  if(!title||!views){toast('タイトルと再生数を入力してください','var(--red)');return}
+  videos.push({id:Date.now(),title,cat,views,url,week:[Math.round(views*.3),Math.round(views*.6),Math.round(views*.85),views]});
+  localStorage.setItem('videos',JSON.stringify(videos));
+  renderRanking();initRankingChart();
+  closeAddVideoModal();toast('動画を追加しました！');
+  document.getElementById('v-title').value='';document.getElementById('v-views').value='';document.getElementById('v-url').value='';
+}
+renderRanking();
+
+// Close modals on overlay click
+document.querySelectorAll('.modal-overlay').forEach(m=>{
+  m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open')});
+});
+
+// Init sim chart on load if active
+if(document.getElementById('page-simulator').classList.contains('active')){
+  initSimChart();updateSim();
+}
+
+// ══════════════════════════════════════════
+// THREADS AUTO POST
+// ══════════════════════════════════════════
+const threadsTemplates={
+  'single':{
+    '副業・マネタイズ':[
+      `{kw}を始めて6ヶ月が経ちます。\n\n最初の1ヶ月は毎日が不安でした。結果が出ない。何が間違っているのかもわからない。\n\nでも続けた人だけが知っている「あの感覚」があります。\n\n諦めなかった人に聞いてみてください。全員が言います——「あのとき辞めなくてよかった」と。\n\nあなたは今、どの段階にいますか？`,
+      `{kw}で月収が変わった話をします。\n\n変わったのは「やり方」じゃなくて「考え方」でした。\n\n稼ぐことを「お金をもらうこと」と思っていた頃は全然うまくいかなかった。\n\n「誰かの問題を解決すること」と捉えた瞬間から、数字が動き始めました。\n\nシンプルだけど、これが全てだと思っています。`,
+    ],
+    'ノアの方舟プロジェクト':[
+      `「ノアの方舟」という言葉を聞いて、何を思い浮かべますか？\n\n私たちが作っているのは、本物の体験です。デジタルで再現できないもの。\n\n水の上に浮かぶ博物館。夜空を彩る1000機のドローン。\n\nそこに来た人が、必ず言う言葉があります——\n\n「来てよかった」\n\nそれだけで、全部報われます。`,
+    ],
+    'ドローンショー':[
+      `ドローンショーを初めて見た夜のことを覚えています。\n\n言葉が出ませんでした。1000機が夜空に描く光の絵。\n\n「これを全国に届けたい」と思った瞬間、プロジェクトが始まりました。\n\n次はあなたの街で。`,
+    ],
+    'ライフスタイル':[
+      `{kw}について、正直に思うこと。\n\n「忙しい」を言い訳にしていた時期がありました。\n\nでも本当に忙しかったのか？ SNSを見ていた時間、何となくYouTubeを見ていた時間。\n\nその時間を「自分への投資」に変えた日から、人生が少しずつ変わりました。\n\n変化は劇的じゃないけど、確実に積み重なっています。`,
+    ],
+    'ビジネス・マインド':[
+      `失敗した人にしか分からないことがあります。\n\n{kw}で何度もうまくいかなかった経験。その全てが今の自分を作っています。\n\n成功している人は「失敗しなかった人」ではなく「失敗を乗り越えた人」です。\n\nあなたの失敗は、財産です。`,
+    ],
+    'スイバー（水上タクシー）':[
+      `スイバーに初めて乗った日のことを忘れません。\n\n川の上から見る街並みは、いつも歩いている場所なのに、全く別の世界に見えました。\n\n「移動」が「体験」に変わる瞬間がある。\n\nスイバーはそれを、日常に届けようとしています🛥️\n\nあなたは水の上から、自分の街を見たことがありますか？`,
+    ],
+  },
+  'thread':{
+    '副業・マネタイズ':[
+      [`{kw}で月収を上げるための3ステップ。\n\n長くなるので連投します。\n\n【1/3】まず「何を売るか」より「誰に売るか」を決める。\n\nターゲットが決まると、全てが楽になります。何を書けばいいか、何を作ればいいかが自然と見えてくる。`,
+       `【2/3】「発信」を習慣にする。\n\n毎日じゃなくていい。週3回でいい。\n\n大切なのは「継続」です。\n\n発信を続けると、検索されるようになる。見つけてもらえるようになる。そこから全てが動き始めます。`,
+       `【3/3】最初の「小さな成功」を全力で祝う。\n\n1,000円の収益でも、初めての問い合わせでも。\n\nそれが「できる」という証拠です。\n\n小さな成功を積み重ねた先に、大きな数字があります。\n\nまずは動いてみてください。`,
+      ],
+    ],
+    'スイバー（水上タクシー）':[
+      [`スイバー（水上タクシーアプリ）について話します。\n\n【1/3】スイバーとは何か？\n\n川・海・湖を使った次世代の都市交通サービスです。\nアプリで呼べば、水上を走るタクシーがすぐに来る。\n\n渋滞がない。信号がない。ストレスがない。`,
+       `【2/3】なぜ今、水上タクシーなのか。\n\n都市の陸上交通はすでに限界です。渋滞、排ガス、混雑。\n\n一方、日本には無数の川と港がある。\n\nその「使われていない水の道」をスイバーが開拓します。\nノアの方舟プロジェクトとも連携し、観光×移動×体験を一つに。`,
+       `【3/3】スイバーで変わること。\n\n通勤が景色になる。\n旅が移動から始まる。\n子どもが川を好きになる。\n\n小さな変化の積み重ねが、都市の未来を変えます。\n\nアプリは今すぐプロフのリンクから登録できます🛥️\n一緒に水の上の未来を作りましょう。`,
+      ],
+    ],
+    'ノアの方舟プロジェクト':[
+      [`ノアの方舟プロジェクトについて、知らない人のために説明します。\n\n【1/3】私たちが作っているのは「移動式水上博物館」です。\n\n船に乗って日本各地を巡りながら、地球の歴史と未来を体験できる空間。`,
+       `【2/3】なぜドローンショーと組み合わせるのか。\n\n体験には「驚き」が必要です。\n\n夜空に浮かぶ1000機のドローンが描く方舟の絵。\nそれを見た瞬間、「本物だ」と感じてもらえる。\n\nデジタルと体験の融合が、私たちのコンセプトです。`,
+       `【3/3】クラウドファンディングで支援してくれた方には、特別な体験をご用意しています。\n\n「ノアの方舟」に最初に乗る人になりませんか？\n\n詳細はプロフのリンクから。あなたの支援が、この船を動かします。`,
+      ],
+    ],
+  },
+  'list':{
+    '副業・マネタイズ':[
+      `{kw}を始める前に知っておくべきこと:\n\n✅ 最初の3ヶ月は赤字でも普通\n✅ 完璧な準備より不完全な実行\n✅ ターゲットを絞るほど売れる\n✅ 「続けること」が最強の戦略\n✅ 小さく始めて大きく育てる\n\nこれを知っていれば、同じ失敗はしなくて済みます。\n\nどれが一番刺さりましたか？`,
+    ],
+    'ノアの方舟プロジェクト':[
+      `ノアの方舟プロジェクトでできること:\n\n🚢 水上博物館の見学\n🚁 ドローンショー観覧（1000機）\n📸 フォトスポット撮影\n🌍 地球環境の体験型学習\n💬 支援者限定イベント参加\n🗺️ 全国ツアーへの参加\n\n興味ある方はプロフのリンクから詳細を確認してください！`,
+    ],
+    'スイバー（水上タクシー）':[
+      `スイバー（水上タクシー）でできること:\n\n🛥️ アプリで即時配車\n🌊 渋滞ゼロの水上移動\n🌿 電動船でCO2排出ゼロ\n📸 水上フォトツアー\n🏙️ 観光×通勤×緊急対応\n🤝 ノアの方舟プロジェクト連携\n\nまずはアプリ登録👇 プロフのリンクから！`,
+    ],
+  },
+};
+
+let thGeneratedPosts=[];
+let thSwiperIdx=0;
+let thReserved=JSON.parse(localStorage.getItem('thReserved')||'[]');
+
+function generateThreads(){
+  const genre=document.getElementById('th-genre').value;
+  const format=document.getElementById('th-format').value;
+  const tone=document.getElementById('th-tone').value;
+  const kw=document.getElementById('th-kw').value||genre;
+  const htCount=parseInt(document.getElementById('th-hashtag').value);
+  const hashtags=['#副業','#マネタイズ','#ノアの方舟','#ドローンショー','#体験型観光','#副業初心者','#在宅ワーク','#自由な働き方','#スイバー','#水上タクシー','#水上移動','#MaaS'];
+  const htStr=htCount>0?'\n\n'+hashtags.sort(()=>Math.random()-.5).slice(0,htCount).join(' '):'';
+  const tplMap=threadsTemplates[format]||threadsTemplates['single'];
+  const tpl=tplMap[genre]||tplMap[Object.keys(tplMap)[0]]||[];
+  if(!tpl.length){toast('このジャンルのテンプレートを追加中です','var(--yellow)');return}
+  thGeneratedPosts=tpl.map(t=>{
+    if(Array.isArray(t)) return t.map(s=>s.replace(/\{kw\}/g,kw));
+    return (t.replace(/\{kw\}/g,kw))+htStr;
+  }).flat();
+  thSwiperIdx=0;
+  renderThSwiper();
+  document.getElementById('th-gen-count').style.display='inline';
+  toast('Threads投稿を生成しました！');
+}
+
+function renderThSwiper(){
+  const track=document.getElementById('th-swiper-track');
+  const nav=document.getElementById('th-swiper-nav');
+  nav.style.display='flex';
+  track.innerHTML=thGeneratedPosts.map((p,i)=>`
+    <div class="swiper-slide">
+      <div class="swipe-card" style="border-color:rgba(228,64,95,.2)">
+        <div class="swipe-card-num">
+          <span class="badge badge-purple">投稿 ${i+1}</span>
+          <span style="color:var(--muted)">${p.length}文字</span>
+          ${p.length<=500?'<span class="badge badge-green">500字以内 ✓</span>':'<span class="badge badge-red">500字超</span>'}
+        </div>
+        <div class="swipe-card-text">${p.replace(/\n/g,'<br>')}</div>
+        <div class="swipe-card-actions">
+          <button class="btn btn-sm btn-ghost" onclick="copyText(thGeneratedPosts[${i}])">📋 コピー</button>
+          <button class="btn btn-sm" style="background:rgba(228,64,95,.15);color:#e4405f;border:none;cursor:pointer;padding:6px 14px;font-size:.75rem;font-weight:600;border-radius:6px;font-family:inherit" onclick="thReservePost(${i})">📅 予約</button>
+          <button class="btn btn-sm" style="background:linear-gradient(135deg,#833ab4,#e1306c);color:#fff;border:none;cursor:pointer;padding:6px 14px;font-size:.75rem;font-weight:600;border-radius:6px;font-family:inherit" onclick="postToThreads(thGeneratedPosts[${i}])">⊕ 投稿</button>
+          <button class="btn btn-sm" style="background:rgba(79,142,247,.15);color:var(--accent);border:none;cursor:pointer;padding:6px 14px;font-size:.75rem;font-weight:600;border-radius:6px;font-family:inherit" onclick="savePost('Threads',${i},thGeneratedPosts[${i}])">💾 保存</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+  document.getElementById('th-swiper-dots').innerHTML=thGeneratedPosts.map((_,i)=>
+    `<div class="swiper-dot${i===0?' active':''}" onclick="thSwipeTo(${i})"></div>`
+  ).join('');
+  document.getElementById('th-swiper-counter').textContent=`1 / ${thGeneratedPosts.length}`;
+  thSwipeTo(0);
+}
+function thSwipe(dir){thSwipeTo(Math.max(0,Math.min(thGeneratedPosts.length-1,thSwiperIdx+dir)))}
+function thSwipeTo(i){
+  thSwiperIdx=i;
+  document.getElementById('th-swiper-track').style.transform=`translateX(-${i*100}%)`;
+  document.getElementById('th-swiper-counter').textContent=`${i+1} / ${thGeneratedPosts.length}`;
+  document.querySelectorAll('#th-swiper-dots .swiper-dot').forEach((d,j)=>d.classList.toggle('active',j===i));
+}
+function thReservePost(i){
+  const dt=prompt('予約日時を入力 (例: 2026-04-21T21:00)');
+  if(!dt)return;
+  thReserved.unshift({text:thGeneratedPosts[i],dt,id:Date.now()});
+  localStorage.setItem('thReserved',JSON.stringify(thReserved));
+  renderThReserved();toast('Threads投稿を予約しました！');
+}
+function renderThReserved(){
+  const el=document.getElementById('th-reserved-list');
+  document.getElementById('th-reserve-count').textContent=thReserved.length+'件';
+  if(!thReserved.length){el.innerHTML='<div style="color:var(--muted);font-size:.78rem;text-align:center;padding:20px">まだ予約なし</div>';return}
+  el.innerHTML=thReserved.map((p,i)=>`
+    <div style="padding:7px 0;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:flex-start">
+      <div style="flex:1">
+        <div style="font-size:.68rem;color:#e4405f">${p.dt}</div>
+        <div style="font-size:.74rem;margin-top:2px">${p.text.substring(0,50)}…</div>
+      </div>
+      <button class="btn btn-danger" style="padding:2px 8px;font-size:.68rem" onclick="thDelReserved(${i})">✕</button>
+    </div>
+  `).join('');
+}
+function thDelReserved(i){thReserved.splice(i,1);localStorage.setItem('thReserved',JSON.stringify(thReserved));renderThReserved()}
+renderThReserved();
+document.addEventListener('keydown',e=>{
+  if(document.getElementById('page-threads').classList.contains('active')&&thGeneratedPosts.length){
+    if(e.key==='ArrowLeft')thSwipe(-1);
+    if(e.key==='ArrowRight')thSwipe(1);
+  }
+});
+
+// ══════════════════════════════════════════
+// 大阪天気予報
+// ══════════════════════════════════════════
+
+const WMO_CODE = {
+  0:{ja:'晴れ',emoji:'☀️'},1:{ja:'ほぼ晴れ',emoji:'🌤️'},2:{ja:'一部曇り',emoji:'⛅'},
+  3:{ja:'曇り',emoji:'☁️'},45:{ja:'霧',emoji:'🌫️'},48:{ja:'霧氷',emoji:'🌫️'},
+  51:{ja:'霧雨（弱）',emoji:'🌦️'},53:{ja:'霧雨',emoji:'🌦️'},55:{ja:'霧雨（強）',emoji:'🌧️'},
+  61:{ja:'雨（弱）',emoji:'🌧️'},63:{ja:'雨',emoji:'🌧️'},65:{ja:'大雨',emoji:'🌧️'},
+  71:{ja:'雪（弱）',emoji:'🌨️'},73:{ja:'雪',emoji:'❄️'},75:{ja:'大雪',emoji:'❄️'},
+  80:{ja:'にわか雨',emoji:'🌦️'},81:{ja:'にわか雨（強）',emoji:'🌧️'},82:{ja:'激しいにわか雨',emoji:'⛈️'},
+  95:{ja:'雷雨',emoji:'⛈️'},
+};
+
+const JMA_WARNING_CODES = {
+  '01':{ja:'大雨警報',level:'danger'},'02':{ja:'洪水警報',level:'danger'},
+  '03':{ja:'暴風警報',level:'danger'},'04':{ja:'大雪警報',level:'danger'},
+  '05':{ja:'暴風雪警報',level:'danger'},'06':{ja:'波浪警報',level:'danger'},
+  '07':{ja:'高潮警報',level:'danger'},'10':{ja:'大雨注意報',level:'warning'},
+  '11':{ja:'洪水注意報',level:'warning'},'12':{ja:'強風注意報',level:'warning'},
+  '13':{ja:'大雪注意報',level:'warning'},'14':{ja:'波浪注意報',level:'warning'},
+  '15':{ja:'高潮注意報',level:'warning'},'16':{ja:'濃霧注意報',level:'warning'},
+  '17':{ja:'雷注意報',level:'warning'},'18':{ja:'乾燥注意報',level:'info'},
+  '21':{ja:'乾燥注意報',level:'info'},
+};
+
+function wxCode(code){ return WMO_CODE[code]||{ja:'不明',emoji:'🌡️'}; }
+
+let wxWeatherData=null, wxMarineData=null, wxWarningData=null;
+let wxPlatform='x', wxPostType='tomorrow', wxGenText='';
+
+const WX_WEATHER_API='https://api.open-meteo.com/v1/forecast?latitude=34.6937&longitude=135.5023'
+  +'&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_max'
+  +'&current=temperature_2m,weather_code,wind_speed_10m,relative_humidity_2m,precipitation'
+  +'&timezone=Asia%2FTokyo&forecast_days=7';
+const WX_MARINE_API='https://marine-api.open-meteo.com/v1/marine?latitude=34.6937&longitude=135.5023'
+  +'&hourly=wave_height,wave_period,wave_direction&daily=wave_height_max,wave_period_max'
+  +'&timezone=Asia%2FTokyo&forecast_days=7';
+const WX_JMA_API='https://www.jma.go.jp/bosai/warning/data/warning/270000.json';
+
+function wxInit(){
+  if(!wxWeatherData||(Date.now()-(wxWeatherData._fetchedAt||0)>30*60*1000)) wxFetch();
+}
+
+async function wxFetch(){
+  document.getElementById('wx-current-wrap').innerHTML='<div class="wx-loading">🌐 天気データを取得中...</div>';
+  document.getElementById('wx-tomorrow-wrap').style.display='none';
+  document.getElementById('wx-forecast-wrap').style.display='none';
+  document.getElementById('wx-marine-wrap').style.display='none';
+  document.getElementById('wx-gen-card').style.display='none';
+  document.getElementById('wx-warning-wrap').innerHTML='<div class="wx-warning-bar safe"><span class="wx-warning-icon">🌐</span><div class="wx-warning-content"><div class="wx-warning-title" style="color:var(--muted)">警報・注意報を取得中...</div></div></div>';
+
+  try {
+    const [weather, marine, warning] = await Promise.all([
+      fetch(WX_WEATHER_API).then(r=>r.json()),
+      fetch(WX_MARINE_API).then(r=>r.json()),
+      fetch(WX_JMA_API).then(r=>r.json()).catch(()=>null),
+    ]);
+    weather._fetchedAt = Date.now();
+    wxWeatherData = weather;
+    wxMarineData  = marine;
+    wxWarningData = warning;
+    wxRenderWarning(warning);
+    wxRenderCurrent(weather);
+    wxRenderTomorrow(weather);
+    wxRenderForecast(weather);
+    wxRenderMarine(marine);
+    document.getElementById('wx-gen-card').style.display='block';
+    document.getElementById('wx-updated-label').textContent='最終更新: '+new Date(weather._fetchedAt).toLocaleString('ja-JP');
+  } catch(e) {
+    document.getElementById('wx-current-wrap').innerHTML=
+      `<div class="wx-error">⚠️ データ取得に失敗しました。<br><small>${e.message}</small><br><br>`
+      +`<button class="btn btn-ghost btn-sm" onclick="wxFetch()">🔄 再試行</button></div>`;
+  }
+}
+
+function wxRenderWarning(jma){
+  const wrap = document.getElementById('wx-warning-wrap');
+  if(!jma){ wrap.innerHTML='<div class="wx-warning-bar safe"><span class="wx-warning-icon">⚠️</span><div class="wx-warning-content"><div class="wx-warning-title" style="color:var(--muted)">警報データ取得失敗</div></div></div>'; return; }
+
+  // Collect all active warnings across areas
+  const active = {danger:[],warning:[],info:[]};
+  const seen = new Set();
+  (jma.areaTypes||[]).forEach(at=>{
+    (at.areas||[]).forEach(area=>{
+      (area.warnings||[]).forEach(w=>{
+        const code = String(w.code).padStart(2,'0');
+        const status = w.status||'';
+        if((status==='発表'||status==='継続'||status==='更新')&&JMA_WARNING_CODES[code]&&!seen.has(code)){
+          seen.add(code);
+          const info = JMA_WARNING_CODES[code];
+          active[info.level].push(info.ja);
+        }
+      });
+    });
+  });
+
+  const hasDanger  = active.danger.length>0;
+  const hasWarning = active.warning.length>0;
+  const hasInfo    = active.info.length>0;
+
+  if(!hasDanger&&!hasWarning&&!hasInfo){
+    wrap.innerHTML='<div class="wx-warning-bar safe"><span class="wx-warning-icon">✅</span><div class="wx-warning-content"><div class="wx-warning-title" style="color:var(--green)">現在、大阪府に警報・注意報は発令されていません</div></div></div>';
+    return;
+  }
+
+  const barClass = hasDanger?'has-warning':hasWarning?'has-advisory':'safe';
+  const icon     = hasDanger?'🚨':hasWarning?'⚠️':'ℹ️';
+  const title    = hasDanger?'【警報発令中】大阪府':hasWarning?'【注意報発令中】大阪府':'【情報】大阪府';
+  const titleColor = hasDanger?'var(--red)':hasWarning?'var(--yellow)':'var(--accent)';
+
+  const badges = [
+    ...active.danger.map(t=>`<span class="wx-badge-danger">🚨 ${t}</span>`),
+    ...active.warning.map(t=>`<span class="wx-badge-warning">⚠️ ${t}</span>`),
+    ...active.info.map(t=>`<span class="wx-badge-info">ℹ️ ${t}</span>`),
+  ].join('');
+
+  wrap.innerHTML=`<div class="wx-warning-bar ${barClass}"><span class="wx-warning-icon">${icon}</span><div class="wx-warning-content"><div class="wx-warning-title" style="color:${titleColor}">${title}</div><div class="wx-warning-badges">${badges}</div></div></div>`;
+}
+
+function wxRenderCurrent(d){
+  const cur = d.current;
+  const wx  = wxCode(cur.weather_code);
+  document.getElementById('wx-current-wrap').innerHTML=`
+    <div class="wx-current-card">
+      <div class="wx-icon">${wx.emoji}</div>
+      <div class="wx-current-main">
+        <div class="wx-current-temp">${Math.round(cur.temperature_2m)}<span style="font-size:1.4rem;font-weight:400">°C</span></div>
+        <div class="wx-current-desc">${wx.ja}</div>
+        <div class="wx-current-meta">
+          <span class="wx-meta-item">💧 湿度 ${cur.relative_humidity_2m}%</span>
+          <span class="wx-meta-item">💨 風速 ${cur.wind_speed_10m} km/h</span>
+          <span class="wx-meta-item">☔ 降水 ${cur.precipitation} mm</span>
+        </div>
+      </div>
+      <div style="text-align:right;min-width:120px">
+        <div style="font-size:.82rem;font-weight:700;color:var(--accent)">📍 大阪市（現在）</div>
+        <div style="font-size:.72rem;color:var(--muted);margin-top:6px">
+          今日 最高: <span style="color:var(--red);font-weight:700">${Math.round(d.daily.temperature_2m_max[0])}°C</span>
+          / 最低: <span style="color:var(--accent);font-weight:700">${Math.round(d.daily.temperature_2m_min[0])}°C</span>
+        </div>
+      </div>
+    </div>`;
+}
+
+function wxRenderTomorrow(d){
+  const i=1, daily=d.daily;
+  const wx=wxCode(daily.weather_code[i]);
+  const max=Math.round(daily.temperature_2m_max[i]);
+  const min=Math.round(daily.temperature_2m_min[i]);
+  const rain=daily.precipitation_sum[i];
+  const wind=daily.wind_speed_10m_max[i];
+
+  let advice='';
+  if(rain>=10) advice='☔ 明日は雨が強くなる見込みです。傘は必携。低地の浸水にも注意してください。';
+  else if(rain>=1) advice='🌂 明日はにわか雨の可能性があります。折りたたみ傘があると安心です。';
+  else if(max>=35) advice='🔥 明日は猛暑日レベルの暑さです。こまめな水分・塩分補給を忘れずに。';
+  else if(max>=30) advice='☀️ 明日は真夏日の予報。熱中症対策をしっかりと。日陰やクーラーを活用してください。';
+  else if(max<=5)  advice='🧊 明日は非常に寒い予報です。防寒着・手袋・マフラーを用意してください。';
+  else if(max<=10) advice='🧥 明日は冷え込みます。暖かい服装でお出かけを。';
+  else             advice='✅ 明日は比較的過ごしやすい一日になりそうです。お出かけ日和ですね。';
+
+  document.getElementById('wx-tomorrow-icon').textContent=wx.emoji;
+  document.getElementById('wx-tomorrow-desc').textContent=wx.ja;
+  document.getElementById('wx-tomorrow-max').textContent=max+'°C';
+  document.getElementById('wx-tomorrow-min').textContent=min+'°C';
+  document.getElementById('wx-tomorrow-rain').textContent='☔ 降水 '+rain+'mm';
+  document.getElementById('wx-tomorrow-wind').textContent='💨 最大風速 '+wind+'km/h';
+  document.getElementById('wx-tomorrow-advice').textContent=advice;
+  document.getElementById('wx-tomorrow-wrap').style.display='block';
+}
+
+function wxRenderForecast(d){
+  const daily=d.daily;
+  const dayNames=['日','月','火','水','木','金','土'];
+  document.getElementById('wx-forecast-grid').innerHTML=daily.time.map((dateStr,i)=>{
+    const dt=new Date(dateStr+'T00:00:00+09:00');
+    const dow=dayNames[dt.getDay()];
+    const label=i===0?'今日':i===1?'明日':`${dt.getMonth()+1}/${dt.getDate()}(${dow})`;
+    const wx=wxCode(daily.weather_code[i]);
+    const rain=daily.precipitation_sum[i];
+    const rainColor=rain>=10?'var(--red)':rain>=1?'var(--yellow)':'var(--muted)';
+    const cls=i===0?'today-card':i===1?'tomorrow-card':'';
+    return `<div class="wx-day-card ${cls}">
+      <div class="wx-day-name">${label}</div>
+      <div class="wx-day-icon">${wx.emoji}</div>
+      <div class="wx-day-desc">${wx.ja}</div>
+      <div class="wx-day-temps">
+        <span class="wx-day-max">${Math.round(daily.temperature_2m_max[i])}°</span>
+        <span style="color:var(--muted);font-size:.7rem">/</span>
+        <span class="wx-day-min">${Math.round(daily.temperature_2m_min[i])}°</span>
+      </div>
+      <div class="wx-day-rain" style="color:${rainColor}">☔ ${rain}mm</div>
+      <div class="wx-day-wind">💨 ${daily.wind_speed_10m_max[i]}km/h</div>
+    </div>`;
+  }).join('');
+  document.getElementById('wx-forecast-wrap').style.display='block';
+}
+
+function wxRenderMarine(m){
+  const daily=m.daily, hourly=m.hourly;
+  const nowH=new Date().getHours();
+  const curHeight = hourly.wave_height[nowH]??daily.wave_height_max[0];
+  const curPeriod = hourly.wave_period[nowH]??'—';
+  const curDir    = hourly.wave_direction[nowH]??'—';
+
+  const dirLabel=dir=>{if(dir==='—')return '—';const dirs=['北','北北東','北東','東北東','東','東南東','南東','南南東','南','南南西','南西','西南西','西','西北西','北西','北北西'];return dirs[Math.round(dir/22.5)%16];};
+
+  let levelClass,levelText,levelIcon,marineAdvice;
+  if(curHeight<=0.5){
+    levelClass='safe';levelText='安全';levelIcon='🟢';
+    marineAdvice='現在の波高は低く、通常航行が可能な状況です。';
+  } else if(curHeight<=1.5){
+    levelClass='caution';levelText='小型船注意';levelIcon='🟡';
+    marineAdvice='小型船は波の状況に注意して航行してください。急な天候変化にも備えてください。';
+  } else if(curHeight<=3.0){
+    levelClass='danger';levelText='小型船出港注意';levelIcon='🔴';
+    marineAdvice='⚠️ 波高が高い状況です。小型船の出港は十分な注意が必要です。気象庁の最新情報を確認してください。';
+  } else {
+    levelClass='extreme';levelText='全船出港自粛推奨';levelIcon='🆘';
+    marineAdvice='🚨 非常に波高が高い状況です。全ての船舶の出港を自粛し、気象庁・海上保安庁の指示に従ってください。';
+  }
+
+  document.getElementById('wx-marine-level-badge').innerHTML=`<div class="wx-marine-level ${levelClass}">${levelIcon} ${levelText}</div>`;
+  document.getElementById('wx-marine-now').innerHTML=`
+    <div class="wx-marine-stat"><div class="wx-marine-stat-val" style="color:var(--accent)">${curHeight.toFixed(2)}<span style="font-size:.75rem">m</span></div><div class="wx-marine-stat-label">現在の波高</div></div>
+    <div class="wx-marine-stat"><div class="wx-marine-stat-val" style="color:var(--accent2)">${typeof curPeriod==='number'?curPeriod.toFixed(1):curPeriod}<span style="font-size:.75rem">s</span></div><div class="wx-marine-stat-label">波周期</div></div>
+    <div class="wx-marine-stat"><div class="wx-marine-stat-val" style="color:var(--green)">${dirLabel(curDir)}</div><div class="wx-marine-stat-label">波向き</div></div>`;
+
+  const dayNames=['日','月','火','水','木','金','土'];
+  document.getElementById('wx-marine-7day').innerHTML=daily.time.map((dateStr,i)=>{
+    const dt=new Date(dateStr+'T00:00:00+09:00');
+    const dow=dayNames[dt.getDay()];
+    const label=i===0?'今日':i===1?'明日':`${dt.getMonth()+1}/${dt.getDate()}(${dow})`;
+    const h=daily.wave_height_max[i];
+    const col=h>3?'var(--red)':h>1.5?'var(--yellow)':h>0.5?'var(--accent)':'var(--green)';
+    return `<div class="wx-marine-day">
+      <div class="wx-marine-day-name">${label}</div>
+      <div class="wx-marine-day-wave" style="color:${col}">${h.toFixed(2)}m</div>
+      <div class="wx-marine-day-period">周期 ${daily.wave_period_max[i].toFixed(1)}s</div>
+    </div>`;
+  }).join('');
+  document.getElementById('wx-marine-advice').textContent=marineAdvice;
+  document.getElementById('wx-marine-wrap').style.display='block';
+}
+
+function wxSelectPlatform(p,el){
+  wxPlatform=p;
+  document.querySelectorAll('.wx-gen-tabs .tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('wx-gen-output').style.display='none';
+}
+function wxSelectType(t,el){
+  wxPostType=t;
+  document.querySelectorAll('.wx-type-tabs .tab').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('wx-gen-output').style.display='none';
+}
+
+function wxBuildSummary(){
+  if(!wxWeatherData) return null;
+  const d=wxWeatherData, cur=d.current, daily=d.daily;
+  return {
+    curTemp:Math.round(cur.temperature_2m), curWx:wxCode(cur.weather_code),
+    humid:cur.relative_humidity_2m, windNow:cur.wind_speed_10m, precipNow:cur.precipitation,
+    todayMax:Math.round(daily.temperature_2m_max[0]), todayMin:Math.round(daily.temperature_2m_min[0]),
+    todayWx:wxCode(daily.weather_code[0]), todayRain:daily.precipitation_sum[0], todayWind:daily.wind_speed_10m_max[0],
+    tmrMax:Math.round(daily.temperature_2m_max[1]), tmrMin:Math.round(daily.temperature_2m_min[1]),
+    tmrWx:wxCode(daily.weather_code[1]), tmrRain:daily.precipitation_sum[1], tmrWind:daily.wind_speed_10m_max[1],
+    weekly: daily.time.map((t,i)=>({
+      date:t, wx:wxCode(daily.weather_code[i]),
+      max:Math.round(daily.temperature_2m_max[i]), min:Math.round(daily.temperature_2m_min[i]),
+      rain:daily.precipitation_sum[i], wind:daily.wind_speed_10m_max[i],
+    })),
+    marine: wxMarineData ? {
+      curHeight: wxMarineData.hourly.wave_height[new Date().getHours()]??wxMarineData.daily.wave_height_max[0],
+      curPeriod: wxMarineData.hourly.wave_period[new Date().getHours()]??'—',
+      tmrMaxHeight: wxMarineData.daily.wave_height_max[1],
+      weeklyMax: wxMarineData.daily.wave_height_max,
+    } : null,
+  };
+}
+
+function wxGeneratePost(){
+  if(!wxWeatherData){toast('先に天気データを取得してください','var(--yellow)');return;}
+  const s=wxBuildSummary();
+  const tone=document.getElementById('wx-tone').value;
+  const extra=document.getElementById('wx-extra-kw').value.trim();
+  const kw=extra?'\n\n#'+extra.split(/[、,，\s]+/).filter(Boolean).join(' #'):'';
+  const p=wxPlatform, type=wxPostType;
+  let post='';
+
+  if(type==='tomorrow'){
+    const t=s.tmrWx, max=s.tmrMax, min=s.tmrMin, rain=s.tmrRain, wind=s.tmrWind;
+    const umbrella=rain>=1?`☔ 降水${rain}mm — 傘を忘れずに！`:`傘は不要そうです${t.emoji}`;
+    const advice=max>=35?'🔥 猛暑日レベル！熱中症対策を':max>=30?'⚠️ 真夏日。熱中症に注意':max<=5?'🧊 極寒！しっかり防寒':max<=10?'🧥 冷え込みます。暖かく':'✅ 比較的過ごしやすい一日';
+    if(p==='x'){
+      const tmpl={
+        casual:`${t.emoji} 明日の大阪の天気\n\n最高 ${max}°C / 最低 ${min}°C\n${umbrella}\n\n${advice}${kw}\n\n#大阪天気 #大阪 #明日の天気`,
+        info:`【明日の大阪天気】\n${t.emoji} ${t.ja}\n最高${max}°C 最低${min}°C\n☔ 降水${rain}mm 💨 風速${wind}km/h\n\n${advice}${kw}\n\n#大阪 #天気予報`,
+        engage:`明日の大阪、外出予定ある人は要チェック！${t.emoji}\n\n最高${max}°C / 最低${min}°C\n${rain>=1?`☔ 降水${rain}mmの予報あり`:'雨の心配はなさそう'}\n\n明日どこ行きますか？${kw}\n\n#大阪 #おでかけ`,
+        hook:`大阪民、明日これ見た？${t.emoji}\n\n最高${max}°C — ${advice}\n${rain>=5?`☔ 雨${rain}mm → 傘必須！`:'☀️ 傘いらない！'}\n\nRT で周りにも教えてあげよう🙏${kw}\n\n#大阪 #明日の天気`,
+      };
+      post=tmpl[tone]||tmpl.casual;
+    } else if(p==='threads'){
+      const tmpl={
+        casual:`${t.emoji} 明日の大阪の天気をお届けします！\n\n📈 最高気温: ${max}°C\n📉 最低気温: ${min}°C\n☔ 降水: ${rain}mm\n💨 最大風速: ${wind}km/h\n\n${umbrella}\n\n${advice}\n\n#大阪 #天気予報 #明日の天気${extra?' #'+extra:''}`,
+        info:`📊 明日（大阪）の天気レポート\n\n${t.emoji} ${t.ja}\n最高 ${max}°C ／ 最低 ${min}°C\n降水 ${rain}mm ／ 風速 ${wind}km/h\n\n${advice}\n\n気象庁データ（Open-Meteo）より\n\n#大阪 #天気予報${extra?' #'+extra:''}`,
+        engage:`大阪の皆さん、明日のお出かけ前に確認を！${t.emoji}\n\n• 最高気温: ${max}°C / 最低: ${min}°C\n• ${rain>=1?`降水${rain}mm ☔ — 傘を持って`:'雨の心配はなし ☀️'}\n• ${advice}\n\n明日の予定は何ですか？\nコメントで教えてください😊\n\n#大阪 #おでかけ #天気${extra?' #'+extra:''}`,
+        hook:`これ見ないで明日外出ると後悔するやつ⚡\n\n明日の大阪👇\n\n${t.emoji} ${t.ja}\n🌡️ 最高 ${max}°C ／ 最低 ${min}°C\n${rain>=5?`☔ 降水 ${rain}mm → 傘必須！`:rain>=1?`🌂 少し雨の可能性（${rain}mm）`:'☀️ 傘いらない！'}\n\n${advice}\n\n#大阪 #天気予報 #明日の天気${extra?' #'+extra:''}`,
+      };
+      post=tmpl[tone]||tmpl.casual;
+    } else {
+      const dateStr=new Date(Date.now()+86400000).toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric',weekday:'long'});
+      post=`# ${dateStr}の大阪天気予報\n\n## 明日の天気まとめ\n\n${t.emoji} **${t.ja}**\n\n| 項目 | データ |\n|------|--------|\n| 最高気温 | ${max}°C |\n| 最低気温 | ${min}°C |\n| 降水量 | ${rain}mm |\n| 最大風速 | ${wind}km/h |\n\n## 注意事項\n\n${rain>=10?'☔ **雨が強くなる見込みです。** 傘の携帯を強くお勧めします。':rain>=1?'🌂 にわか雨の可能性があります。折りたたみ傘を持参すると安心です。':'☀️ 雨の心配はほぼなさそうです。'}\n\n${max>=35?'🔥 **猛暑日が予想されます。** こまめな水分・塩分補給を心がけてください。':max>=30?'⚠️ 真夏日レベルの暑さです。熱中症対策をしっかりと。':max<=5?'🧊 **極寒です。** アウター・手袋・マフラーを用意してください。':max<=10?'🧥 かなり冷え込みます。暖かい服装でお出かけを。':''}\n\n${extra?`## 関連情報\n${extra}\n\n`:''}\n---\n*データソース: Open-Meteo API（気象庁データ準拠）*`;
+    }
+  }
+
+  else if(type==='weekly'){
+    const dayNames=['日','月','火','水','木','金','土'];
+    const weekLine=s.weekly.map((w,i)=>{
+      const dt=new Date(w.date+'T00:00:00+09:00');
+      const label=i===0?'今日':i===1?'明日':`${dt.getMonth()+1}/${dt.getDate()}(${dayNames[dt.getDay()]})`;
+      return `${label}: ${w.wx.emoji}${w.max}°/${w.min}°${w.rain>=1?'☔':''}`;
+    });
+    const rainyDays=s.weekly.filter(w=>w.rain>=1);
+    const maxTempDay=s.weekly.reduce((a,b)=>a.max>b.max?a:b);
+    if(p==='x'){
+      const tmpl={
+        casual:`🌤️ 大阪の今週の天気\n\n${weekLine.slice(0,5).join('\n')}\n\n${rainyDays.length>0?`☔ 雨の日: ${rainyDays.length}日間`:'今週は比較的晴れが続きそう！'}${kw}\n\n#大阪天気 #週間天気`,
+        info:`【大阪週間予報】\n${weekLine.join('\n')}\n\n最高気温ピーク: ${maxTempDay.max}°C${kw}\n\n#大阪 #週間天気予報`,
+        engage:`大阪の今週、晴れ多め？雨多め？${s.weekly[0].wx.emoji}\n\n${weekLine.slice(0,4).join(' | ')}\n\n今週の計画に役立てて！${kw}\n\n#大阪 #週間天気 #おでかけ`,
+        hook:`大阪民よ、今週の天気チェックした？📅\n\n${weekLine.slice(0,5).join('\n')}\n\n${rainyDays.length>=3?'⚠️ 今週は雨が多い！早めに予定を立てよう':'☀️ 今週はおおむね良好！外出チャンス多め'}${kw}\n\n#大阪 #週間予報`,
+      };
+      post=tmpl[tone]||tmpl.casual;
+    } else if(p==='threads'){
+      const tmpl={
+        casual:`🌤️ 大阪の今週の天気をまとめました！\n\n${s.weekly.map((w,i)=>{const dt=new Date(w.date+'T00:00:00+09:00');const label=i===0?'今日':i===1?'明日':`${dt.getMonth()+1}/${dt.getDate()}(${dayNames[dt.getDay()]})`;return `${label}: ${w.wx.emoji} ${w.wx.ja} ${w.max}°C/${w.min}°C${w.rain>=1?' ☔'+w.rain+'mm':''}`;}).join('\n')}\n\n${rainyDays.length>0?`☔ 傘が必要な日は${rainyDays.length}日間`:'今週は晴れが多い良い週になりそう！'}\n\n#大阪 #週間天気 #天気予報${extra?' #'+extra:''}`,
+        info:`📊 大阪週間天気レポート\n\n${s.weekly.map((w,i)=>{const dt=new Date(w.date+'T00:00:00+09:00');const label=i===0?'今日':i===1?'明日':`${dt.getMonth()+1}/${dt.getDate()}(${dayNames[dt.getDay()]})`;return `■${label}: ${w.wx.emoji} 最高${w.max}° 最低${w.min}° 降水${w.rain}mm`;}).join('\n')}\n\n気象庁データ（Open-Meteo）より\n\n#大阪 #週間天気予報${extra?' #'+extra:''}`,
+        engage:`大阪の今週はどんな天気になるでしょうか？😊\n\n${weekLine.join('\n')}\n\n今週の週末は${s.weekly[6]?s.weekly[6].wx.emoji+s.weekly[6].wx.ja:'天気データ確認中'}\n\nどこに行く予定ですか？コメントで教えてください！\n\n#大阪 #週間天気 #おでかけ${extra?' #'+extra:''}`,
+        hook:`大阪の今週の天気、全部まとめた⚡\n\n${weekLine.join('\n')}\n\n${rainyDays.length>=4?'😱 今週は雨が多い週！傘を玄関に常備せよ':rainyDays.length===0?'🎉 今週は雨なし！アウトドア計画を今すぐ立てよう':'☀️ 晴れメインの週！外出計画は今のうちに'}\n\n#大阪 #週間予報 #天気${extra?' #'+extra:''}`,
+      };
+      post=tmpl[tone]||tmpl.casual;
+    } else {
+      const dateStr=new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'});
+      post=`# ${dateStr} 大阪週間天気予報\n\n## 7日間の天気\n\n| 日付 | 天気 | 最高 | 最低 | 降水量 | 風速 |\n|------|------|------|------|--------|------|\n${s.weekly.map((w,i)=>{const dt=new Date(w.date+'T00:00:00+09:00');const label=i===0?'今日':i===1?'明日':dt.toLocaleDateString('ja-JP',{month:'numeric',day:'numeric',weekday:'short'});return `| ${label} | ${w.wx.emoji} ${w.wx.ja} | ${w.max}°C | ${w.min}°C | ${w.rain}mm | ${w.wind}km/h |`;}).join('\n')}\n\n## 今週のポイント\n\n${rainyDays.length>0?`- ☔ **傘が必要な日**: ${rainyDays.length}日間`:'- ☀️ 今週は降雨なしの予報です'}\n- 🌡️ 最高気温ピーク: **${maxTempDay.max}°C**\n\n${extra?`## 関連情報\n${extra}\n\n`:''}\n---\n*データソース: Open-Meteo API（気象庁データ準拠）*`;
+    }
+  }
+
+  else if(type==='marine'){
+    const m=s.marine;
+    if(!m){toast('波浪データが取得できていません','var(--yellow)');return;}
+    const h=m.curHeight.toFixed(2);
+    const level=m.curHeight<=0.5?'安全（通常航行可）':m.curHeight<=1.5?'小型船注意':m.curHeight<=3?'小型船出港注意':'全船出港自粛推奨';
+    const tmrH=m.tmrMaxHeight?m.tmrMaxHeight.toFixed(2):'—';
+    if(p==='x'){
+      const tmpl={
+        casual:`⛵ 大阪湾の波浪情報\n\n現在の波高: ${h}m\n明日の最大波高: ${tmrH}m\n航行レベル: ${level}\n\n${m.curHeight>1.5?'⚠️ 小型船は十分注意してください':'✅ 比較的穏やかな海況です'}${kw}\n\n#大阪湾 #波浪情報 #航行情報`,
+        info:`【大阪湾 波浪情報】\n⛵ 現在波高: ${h}m\n📅 明日最大: ${tmrH}m\n🔰 ${level}\n\n${m.curHeight>3?'🚨 荒天注意':m.curHeight>1.5?'⚠️ 要注意':'✅ 穏やか'}${kw}\n\n#大阪湾 #波浪 #海況`,
+        engage:`大阪湾に出航予定の方、今日の波浪情報です⛵\n\n波高: ${h}m → ${level}\n明日: ${tmrH}m\n\n安全な航行を！${kw}\n\n#大阪湾 #船 #波浪情報`,
+        hook:`出航前に必ずチェック🚢\n\n大阪湾 現在波高: ${h}m\n${m.curHeight>1.5?`⚠️ ${level}！気をつけて！`:`✅ ${level}`}\n\n明日は${tmrH}m予報${kw}\n\n#大阪湾 #波浪 #航行安全`,
+      };
+      post=tmpl[tone]||tmpl.casual;
+    } else if(p==='threads'){
+      const weekWave=m.weeklyMax?m.weeklyMax.map((h,i)=>`${i===0?'今日':i===1?'明日':`${i+1}日後`}: ${h.toFixed(2)}m${h>1.5?' ⚠️':h>0.5?' ':'✅'}`).join('\n'):'データなし';
+      post=`⛵ 大阪湾 波浪情報レポート\n\n【現在の海況】\n🌊 波高: ${h}m\n🔰 航行レベル: ${level}\n\n【7日間の最大波高予報】\n${weekWave}\n\n${m.curHeight>3?'🚨 非常に危険な海況です。全船の出港を自粛してください。気象庁・海上保安庁の指示に従ってください。':m.curHeight>1.5?'⚠️ 小型船は出港を慎重に判断してください。最新の気象情報をご確認ください。':m.curHeight>0.5?'🟡 小型船は波の状況に注意しながら航行してください。':'✅ 比較的穏やかな海況です。通常航行が可能です。'}\n\n#大阪湾 #波浪情報 #航行情報 #船舶${extra?' #'+extra:''}`;
+    } else {
+      const dateStr=new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'});
+      post=`# ${dateStr} 大阪湾 波浪・航行情報\n\n## 現在の海況\n\n| 項目 | データ |\n|------|--------|\n| 現在の波高 | ${h}m |\n| 明日の最大波高 | ${tmrH}m |\n| 航行レベル | ${level} |\n\n## 7日間の最大波高予報\n\n| 日 | 最大波高 | 目安 |\n|----|----------|------|\n${(m.weeklyMax||[]).map((h,i)=>{const label=i===0?'今日':i===1?'明日':`${i+1}日後`;const lvl=h<=0.5?'✅ 安全':h<=1.5?'🟡 小型船注意':h<=3?'⚠️ 危険':'🚨 非常に危険';return `| ${label} | ${h.toFixed(2)}m | ${lvl} |`;}).join('\n')}\n\n## 注意事項\n\n${m.curHeight>3?'🚨 **非常に危険な海況**です。全船舶の出港を自粛し、気象庁・海上保安庁の最新情報に従ってください。':m.curHeight>1.5?'⚠️ **小型船の出港に注意**が必要です。最新の気象情報を必ず確認し、慎重に判断してください。':m.curHeight>0.5?'🟡 小型船は波の状況を観察しながら慎重に航行してください。':'✅ 比較的穏やかな海況です。通常の安全確認を行って航行してください。'}\n\n${extra?`## 関連情報\n${extra}\n\n`:''}\n---\n*データソース: Open-Meteo Marine API / 気象庁警報情報*`;
+    }
+  }
+
+  wxGenText=post;
+  document.getElementById('wx-gen-text').textContent=post;
+  document.getElementById('wx-gen-output').style.display='block';
+  toast('投稿文を生成しました！');
+}
+
+function wxCopyPost(){
+  if(!wxGenText){toast('先に投稿を生成してください','var(--yellow)');return;}
+  navigator.clipboard.writeText(wxGenText).then(()=>toast('コピーしました！'));
+}
+
+function wxReserveToX(){
+  if(!wxGenText){toast('先に投稿を生成してください','var(--yellow)');return;}
+  const dt=prompt('X予約日時を入力\n例: 2026-04-21T09:00');
+  if(!dt) return;
+  xReservedPosts.push({text:wxGenText,dt,id:Date.now()});
+  localStorage.setItem('xReserved',JSON.stringify(xReservedPosts));
+  renderReserved();renderCalendar();
+  toast('X予約に追加しました！');
+}
+
+function wxReserveToThreads(){
+  if(!wxGenText){toast('先に投稿を生成してください','var(--yellow)');return;}
+  const dt=prompt('Threads予約日時を入力\n例: 2026-04-21T21:00');
+  if(!dt) return;
+  thReserved.unshift({text:wxGenText,dt,id:Date.now()});
+  localStorage.setItem('thReserved',JSON.stringify(thReserved));
+  renderThReserved();
+  toast('Threads予約に追加しました！');
+}
+
+// ══════════════════════════════════════════
+// 動画コメントツリー
+// ══════════════════════════════════════════
+let ctComments=JSON.parse(localStorage.getItem('ctComments')||'{}');
+let ctCurrentVideo='';
+let ctFilterMode='all';
+
+const ctSampleComments=[
+  {id:1,author:'田中太郎',avatar:'田',text:'すごい迫力でした！ドローンが一斉に動く瞬間、思わず声が出ました。次はいつですか？',time:'2時間前',likes:24,sentiment:'positive',replies:[
+    {id:11,author:'自分',avatar:'自',text:'ありがとうございます！次回は5月を予定しています。ぜひまたお越しください！',time:'1時間前',likes:3,sentiment:'positive',replies:[]},
+  ]},
+  {id:2,author:'佐藤花子',avatar:'佐',text:'子供が大喜びでした！教育的な内容もあって親としてもとても満足です。',time:'3時間前',likes:18,sentiment:'positive',replies:[]},
+  {id:3,author:'山田健太',avatar:'山',text:'チケットの購入方法が分かりにくかったです。もう少し案内を充実させてほしい。',time:'5時間前',likes:7,sentiment:'negative',replies:[]},
+  {id:4,author:'鈴木美咲',avatar:'鈴',text:'ノアの方舟の世界観が素晴らしかった！また友達を連れてきたいです。',time:'6時間前',likes:32,sentiment:'positive',replies:[]},
+  {id:5,author:'高橋陽介',avatar:'高',text:'駐車場が少なかったのが残念。電車でのアクセスを改善してほしいです。',time:'8時間前',likes:11,sentiment:'negative',replies:[]},
+];
+
+function ctInit(){
+  const sel=document.getElementById('ct-video-sel');
+  sel.innerHTML='<option value="">── 動画を選択 ──</option>'+
+    videos.slice().sort((a,b)=>b.views-a.views).slice(0,10).map(v=>`<option value="${v.id}">${v.title.substring(0,30)}</option>`).join('');
+}
+function ctSelectVideo(){
+  const vid=document.getElementById('ct-video-sel').value;
+  if(!vid){document.getElementById('ct-tree').innerHTML='';return}
+  ctCurrentVideo=vid;
+  if(!ctComments[vid]){
+    ctComments[vid]=JSON.parse(JSON.stringify(ctSampleComments));
+    localStorage.setItem('ctComments',JSON.stringify(ctComments));
+  }
+  document.getElementById('ct-video-title-label').textContent=
+    videos.find(v=>String(v.id)===String(vid))?.title||'動画コメント';
+  ctUpdateStats();ctRenderTree();
+}
+function ctAddComment(){
+  const txt=document.getElementById('ct-new-comment').value.trim();
+  if(!ctCurrentVideo){toast('先に動画を選択してください','var(--red)');return}
+  if(!txt)return;
+  ctComments[ctCurrentVideo].unshift({
+    id:Date.now(),author:'自分',avatar:'自',text:txt,
+    time:'今',likes:0,sentiment:'positive',replies:[]
+  });
+  localStorage.setItem('ctComments',JSON.stringify(ctComments));
+  document.getElementById('ct-new-comment').value='';
+  ctUpdateStats();ctRenderTree();toast('コメントを投稿しました！');
+}
+function ctAddReply(parentId){
+  const input=document.getElementById('ct-reply-input-'+parentId);
+  const txt=input?.value.trim();
+  if(!txt)return;
+  const comments=ctComments[ctCurrentVideo];
+  const parent=comments.find(c=>c.id===parentId);
+  if(parent){
+    parent.replies.push({id:Date.now(),author:'自分',avatar:'自',text:txt,time:'今',likes:0,sentiment:'positive',replies:[]});
+    localStorage.setItem('ctComments',JSON.stringify(ctComments));
+    ctUpdateStats();ctRenderTree();toast('返信しました！');
+  }
+}
+function ctAutoReply(parentId){
+  const comments=ctComments[ctCurrentVideo];
+  const parent=comments.find(c=>c.id===parentId);
+  if(!parent)return;
+  const positiveReplies=[
+    'ありがとうございます！またぜひお越しください😊',
+    'お楽しみいただけて嬉しいです！次回もお待ちしております✨',
+    'そのお言葉、スタッフ一同の励みになります！ありがとうございます🙏',
+  ];
+  const negativeReplies=[
+    'ご意見ありがとうございます。改善に向けて取り組んでまいります。',
+    'ご不便をおかけして申し訳ございません。次回はより良い環境でお迎えできるよう努めます。',
+    '貴重なフィードバックをありがとうございます。スタッフに共有し改善いたします。',
+  ];
+  const replies=parent.sentiment==='negative'?negativeReplies:positiveReplies;
+  const txt=replies[Math.floor(Math.random()*replies.length)];
+  parent.replies.push({id:Date.now(),author:'自分',avatar:'自',text:txt,time:'今',likes:0,sentiment:'positive',replies:[]});
+  localStorage.setItem('ctComments',JSON.stringify(ctComments));
+  ctUpdateStats();ctRenderTree();toast('AI返信を追加しました！');
+}
+function ctToggleReply(id){
+  const box=document.getElementById('ct-reply-box-'+id);
+  if(box)box.style.display=box.style.display==='none'?'flex':'none';
+}
+function ctFilter(mode,el){
+  ctFilterMode=mode;
+  document.querySelectorAll('.comment-filter .tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  ctRenderTree();
+}
+function ctUpdateStats(){
+  if(!ctCurrentVideo)return;
+  const all=ctComments[ctCurrentVideo]||[];
+  const total=all.length;
+  const replied=all.filter(c=>c.replies.length>0).length;
+  const positive=all.filter(c=>c.sentiment==='positive').length;
+  document.getElementById('ct-total').textContent=total;
+  document.getElementById('ct-unreplied').textContent=total-replied;
+  document.getElementById('ct-replied').textContent=replied;
+  document.getElementById('ct-positive').textContent=total?Math.round(positive/total*100)+'%':'―';
+}
+function ctRenderTree(){
+  if(!ctCurrentVideo){document.getElementById('ct-tree').innerHTML='';return}
+  let comments=ctComments[ctCurrentVideo]||[];
+  if(ctFilterMode==='unreplied') comments=comments.filter(c=>!c.replies.length);
+  if(ctFilterMode==='positive') comments=comments.filter(c=>c.sentiment==='positive');
+  if(ctFilterMode==='negative') comments=comments.filter(c=>c.sentiment==='negative');
+  document.getElementById('ct-tree').innerHTML=comments.map(c=>ctRenderComment(c,false)).join('');
+}
+function ctRenderComment(c,isReply){
+  const sentColor=c.sentiment==='positive'?'var(--green)':'var(--red)';
+  const sentIcon=c.sentiment==='positive'?'😊':'😤';
+  const repliesHtml=c.replies.map(r=>ctRenderComment(r,true)).join('');
+  return `
+    <div class="comment-node">
+      <div class="comment-item" style="border-color:${isReply?'rgba(79,142,247,.2)':c.sentiment==='negative'?'rgba(248,113,113,.2)':'var(--border)'}">
+        <div class="comment-avatar" style="background:${isReply?'var(--card2)':''}; color:${isReply?'var(--accent)':'#fff'}; border:${isReply?'1px solid var(--accent)':'none'}">${c.avatar}</div>
+        <div class="comment-body">
+          <div class="comment-author">${c.author} <span style="font-size:.65rem;color:${sentColor}">${sentIcon}</span></div>
+          <div class="comment-text">${c.text}</div>
+          <div class="comment-meta">
+            <span class="comment-time">${c.time}</span>
+            <span class="comment-like">♥ ${c.likes}</span>
+            ${!isReply?`<button class="comment-reply-btn" onclick="ctToggleReply(${c.id})">↩ 返信</button>
+            <button class="comment-reply-btn" style="color:var(--accent2)" onclick="ctAutoReply(${c.id})">✨ AI返信</button>`:''}
+          </div>
+          ${!isReply?`<div id="ct-reply-box-${c.id}" class="comment-input-wrap" style="display:none">
+            <div class="comment-avatar" style="width:24px;height:24px;font-size:.6rem;flex-shrink:0">自</div>
+            <input id="ct-reply-input-${c.id}" placeholder="返信を入力…" onkeydown="if(event.key==='Enter')ctAddReply(${c.id})" style="font-size:.78rem" />
+            <button class="btn btn-primary btn-sm" onclick="ctAddReply(${c.id})" style="padding:4px 10px">返信</button>
+          </div>`:''}
+        </div>
+      </div>
+      ${repliesHtml?`<div class="comment-replies">${repliesHtml}</div>`:''}
+    </div>
+  `;
+}
+// showPage に ct-init を追加
+const _origShowPage=showPage;
+showPage=function(id){
+  _origShowPage.call(this,id);
+  if(id==='comment-tree'){ctInit();if(ctCurrentVideo)ctRenderTree();}
+};
+</script>
+</body>
+</html>
